@@ -23,6 +23,8 @@
 
 package org.ohnlp.elasticsearchnlp.analyzers;
 
+import com.robrua.nlp.bert.BasicTokenizer;
+import com.robrua.nlp.bert.Bert;
 import org.ohnlp.elasticsearchnlp.context.ConTexTSettings;
 import org.ohnlp.elasticsearchnlp.context.ConTexTStatus;
 import org.ohnlp.elasticsearchnlp.context.ConTexTTrigger;
@@ -49,16 +51,21 @@ import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 
 /**
- * Annotates input text with {@link NLPPayload} payloads if not present and populates
- * negation, certainty, and temporality into said payload.
+ * <p>Annotates input text with {@link NLPPayload} payloads if not present.</p>
  * <p>
- * Generally speaking, this is done via the following using a UIMA-backed MedTagger pipeline:
- * 1. Sentence Boundary Detection
- * 2. Tokenization
- * 3. Annotation of tokens using contextual information
- * 4. Aggregation of tokens throughout the document in order
+ *     NLP Payloads
+ * </p>
+ * <p>
+ * Generally speaking, this is done via the following sequence of events:
+ * <ol>
+ *     <li>Sentence Boundary Detection</li>
+ *     <li>Tokenization and Annotation of Tokens using Contextual Annotation</li>
+ *     <li>Sentence-Level BERT Model Embeddings and Per-Token Embedding Representations</li>
+ *     <li>Aggregation of all tokens in the document, in-order</li>
+ * </ol>
+ * </p>
  */
-public final class ConTexTAwareTokenizer extends Tokenizer {
+public final class NLPTokenizer extends Tokenizer {
 
     private static final int[] RULE_PRIORITIES = {1, 2}; // TODO more robust solution that scans files
 
@@ -77,9 +84,10 @@ public final class ConTexTAwareTokenizer extends Tokenizer {
     private TokenizerME tokenizer;
     private SentenceDetectorME sentenceDetector;
     private static final int MAX_WIN_SIZE = -1;
+    private Bert bert;
 
     // Starts a new UIMA pipeline on initialization
-    public ConTexTAwareTokenizer() {
+    public NLPTokenizer() {
         try {
             initNLPComponents();
             for (int i : RULE_PRIORITIES) {
@@ -96,10 +104,11 @@ public final class ConTexTAwareTokenizer extends Tokenizer {
     }
 
     private void initNLPComponents() throws IOException {
-        TokenizerModel tokModel = new TokenizerModel(ConTexTAwareTokenizer.class.getResourceAsStream("/models/en-token.bin"));
+        TokenizerModel tokModel = new TokenizerModel(NLPTokenizer.class.getResourceAsStream("/models/en-token.bin"));
         tokenizer = new TokenizerME(tokModel);
-        SentenceModel sentModel = new SentenceModel(ConTexTAwareTokenizer.class.getResourceAsStream("/models/en-sent.bin"));
+        SentenceModel sentModel = new SentenceModel(NLPTokenizer.class.getResourceAsStream("/models/en-sent.bin"));
         sentenceDetector = new SentenceDetectorME(sentModel);
+        bert = Bert.load("com/robrua/nlp/easy-bert/bert-uncased-L-12-H-768-A-12");
     }
 
 
@@ -140,7 +149,7 @@ public final class ConTexTAwareTokenizer extends Tokenizer {
     }
 
     /**
-     * Resets the tokenizer with a given input and annotates ConText information
+     * Resets the tokenizer with a given input and performs all NLP tasks
      *
      * @throws IOException if errors occur during NLP
      */
@@ -150,22 +159,23 @@ public final class ConTexTAwareTokenizer extends Tokenizer {
         this.readAllFromInput(this.input);
         // Run NLP pipeline
         this.document = this.str.toString();
-        this.tokenQueue = annotateConTexts();
-
+        this.tokenQueue = annotateNLP();
     }
 
     /**
-     * Determines ConText status for every BaseToken in the input text and returns as a sequential list of context statuses
+     * Runs BERT embeddings on a sentence as a sequence for each token
+     * Determines ConText status for every BaseToken in the input text and returns as
+     * a sequential list of context statuses and the associated embedding for each sentence that contains it
      * {@link ConTexTStatus} objects
      */
-    private Deque<TokenPayloadPair> annotateConTexts() {
+    private Deque<TokenPayloadPair> annotateNLP() {
         Deque<TokenPayloadPair> ret = new LinkedList<>();
+        Deque<float[]> embeddings = new LinkedList<>();
         ConTexTStatus[] documentContexts = new ConTexTStatus[document.length()];
         for (int i = 0; i < documentContexts.length; i++) {
             documentContexts[i] = new ConTexTStatus();
         }
-        // Populate ConTexts by sentence
-
+        // Populate ConTexts and Embeddings by sentence
         for (Span sentence : sentenceDetector.sentPosDetect(document)) {
             // TODO: not really efficient, better to just directly put into the destination array instead of copying
             String text = document.substring(sentence.getStart(), sentence.getEnd());
@@ -177,12 +187,13 @@ public final class ConTexTAwareTokenizer extends Tokenizer {
                 // Annotate and copy context statuses to the document contexts
                 System.arraycopy(annotateConTextStatuses(triggers, subText), 0, documentContexts, start, subText.length());
                 start += subText.length();
+                embeddings.addLast(bert.embedSequence(subText));
             }
         }
-        // Iterate through tokens to generate token/payload pairs. Select returns in-order as per UIMA
+        // Iterate through tokens to generate token/payload pairs.
         for (Span token : tokenizer.tokenizePos(document)) {
             NLPPayload payload = new NLPPayload();
-            ConTexTStatus context = documentContexts[token.getStart()]; // TODO: more comprehensive check than first character collision
+            ConTexTStatus context = documentContexts[token.getStart()];
             if (!context.isPositive) {
                 payload.setPositive(false);
             }

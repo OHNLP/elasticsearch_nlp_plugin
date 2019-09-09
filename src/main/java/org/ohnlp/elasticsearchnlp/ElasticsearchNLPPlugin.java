@@ -23,7 +23,7 @@
 
 package org.ohnlp.elasticsearchnlp;
 
-import org.ohnlp.elasticsearchnlp.analyzers.ConTexTAwareTokenizer;
+import org.ohnlp.elasticsearchnlp.analyzers.NLPTokenizer;
 import org.ohnlp.elasticsearchnlp.analyzers.NLPAnalyzerProvider;
 import org.ohnlp.elasticsearchnlp.elasticsearch.NLPNaiveBooleanESQueryBuilder;
 import org.ohnlp.elasticsearchnlp.script.NLPScriptEngine;
@@ -49,7 +49,7 @@ public class ElasticsearchNLPPlugin extends Plugin implements AnalysisPlugin, Sc
 
     @Override
     public Map<String, AnalysisModule.AnalysisProvider<TokenizerFactory>> getTokenizers() {
-        return Collections.singletonMap("nlp", (indexSettings, env, name, settings) -> ConTexTAwareTokenizer::new);
+        return Collections.singletonMap("nlp", (indexSettings, env, name, settings) -> NLPTokenizer::new);
     }
 
     @Override
