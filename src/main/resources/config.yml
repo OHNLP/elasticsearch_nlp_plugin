@@ -1,0 +1,21 @@
+components:
+  enabled:
+    - clinical_stop_words
+    - context
+  settings:
+    context:
+      weights:
+        mismatch:
+          negation: -1.00
+          subject: 0.00
+          temporal:
+            light: 0.75
+            heavy: 0.5
+          assertion:
+            light: 0.75
+            heavy: 0.5
+        match:
+          negation: 1.00
+          subject: 1.00
+          temporal: 1.00
+          assertion: 1.00

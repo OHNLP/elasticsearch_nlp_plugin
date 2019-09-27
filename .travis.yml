@@ -1,0 +1,17 @@
+language: java
+git:
+  quiet: true
+branches:
+  only:
+    - master
+    - /v\d+\.\d+[a-z]?(\.\d+[a-z]?)/
+install:
+  - mvn install -DskipTests=true -Dmaven.javadoc.skip=true -B -V
+  - ant dist
+deploy:
+  provider: releases
+  overwrite: true
+  file: ES-NLP-Plugin.zip
+  on:
+    tags: true
+  skip_cleanup: true
