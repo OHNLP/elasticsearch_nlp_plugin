@@ -23,6 +23,7 @@
 
 package org.ohnlp.elasticsearchnlp.analyzers;
 
+import org.ohnlp.elasticsearchnlp.ElasticsearchNLPPlugin;
 import org.ohnlp.elasticsearchnlp.context.ConTexTSettings;
 import org.ohnlp.elasticsearchnlp.context.ConTexTStatus;
 import org.ohnlp.elasticsearchnlp.context.ConTexTTrigger;
@@ -150,62 +151,67 @@ public final class ConTexTAwareTokenizer extends Tokenizer {
         this.readAllFromInput(this.input);
         // Run NLP pipeline
         this.document = this.str.toString();
-        this.tokenQueue = annotateConTexts();
+        this.tokenQueue = createNLPPayloads();
 
     }
 
     /**
-     * Determines ConText status for every BaseToken in the input text and returns as a sequential list of context statuses
-     * {@link ConTexTStatus} objects
+     * Runs Token-Level NLP components for creating {@link NLPPayload} objects
+     *
+     * Currently this consists of determining ConText statuses for every BaseToken in the input text
+     * and returning as a sequential list of token, NLPPayload pairs
      */
-    private Deque<TokenPayloadPair> annotateConTexts() {
+    private Deque<TokenPayloadPair> createNLPPayloads() {
         Deque<TokenPayloadPair> ret = new LinkedList<>();
         ConTexTStatus[] documentContexts = new ConTexTStatus[document.length()];
         for (int i = 0; i < documentContexts.length; i++) {
             documentContexts[i] = new ConTexTStatus();
         }
-        // Populate ConTexts by sentence
-
-        for (Span sentence : sentenceDetector.sentPosDetect(document)) {
-            // TODO: not really efficient, better to just directly put into the destination array instead of copying
-            String text = document.substring(sentence.getStart(), sentence.getEnd());
-            int start = sentence.getStart() - 1; // Offset the lack of starting \n for next
-            for (String subText : text.split("\n")) {
-                start++; // Factor in the \n
-                Deque<Map<ConTexTTrigger.TriggerType, List<ConTexTTrigger>>> triggersByPriority = getTriggers(subText);
-                Map<ConTexTTrigger.TriggerType, List<ConTexTTrigger>> triggers = flattenByPriority(triggersByPriority);
-                // Annotate and copy context statuses to the document contexts
-                System.arraycopy(annotateConTextStatuses(triggers, subText), 0, documentContexts, start, subText.length());
-                start += subText.length();
+        // Populate ConTexts by sentence if enabled
+        if (ElasticsearchNLPPlugin.CONFIG.enableConTextSupport()) {
+            for (Span sentence : sentenceDetector.sentPosDetect(document)) {
+                // TODO: not really efficient, better to just directly put into the destination array instead of copying
+                String text = document.substring(sentence.getStart(), sentence.getEnd());
+                int start = sentence.getStart() - 1; // Offset the lack of starting \n for next
+                for (String subText : text.split("\n")) {
+                    start++; // Factor in the \n
+                    Deque<Map<ConTexTTrigger.TriggerType, List<ConTexTTrigger>>> triggersByPriority = getTriggers(subText);
+                    Map<ConTexTTrigger.TriggerType, List<ConTexTTrigger>> triggers = flattenByPriority(triggersByPriority);
+                    // Annotate and copy context statuses to the document contexts
+                    System.arraycopy(annotateConTextStatuses(triggers, subText), 0, documentContexts, start, subText.length());
+                    start += subText.length();
+                }
             }
         }
-        // Iterate through tokens to generate token/payload pairs. Select returns in-order as per UIMA
+        // Iterate through tokens to generate token/payload pairs.
         for (Span token : tokenizer.tokenizePos(document)) {
             NLPPayload payload = new NLPPayload();
-            ConTexTStatus context = documentContexts[token.getStart()]; // TODO: more comprehensive check than first character collision
-            if (!context.isPositive) {
-                payload.setPositive(false);
-            }
-            if (!context.isAsserted) {
-                payload.setAsserted(false);
-            }
-            if (!context.isPresent) {
-                payload.setPresent(false);
-            }
-            if (!context.experiencerIsPatient) {
-                payload.setPatientIsSubject(false);
-            }
-            if (context.isNegationTerminal || context.isNegationTrigger) {
-                payload.setNegationTrigger(true);
-            }
-            if (context.isPossibleTerminal || context.isPossibleTrigger || context.isHypotheticalTerminal || context.isHypotheticalTrigger) {
-                payload.setAssertionTrigger(true);
-            }
-            if (context.isHistoricalTerminal || context.isHistoricalTrigger) {
-                payload.setHistoricalTrigger(true);
-            }
-            if (context.isExperiencerTerminal || context.isExperiencerTrigger) {
-                payload.setExperiencerTrigger(true);
+            if (ElasticsearchNLPPlugin.CONFIG.enableConTextSupport()) {
+                ConTexTStatus context = documentContexts[token.getStart()]; // TODO: more comprehensive check than first character collision
+                if (!context.isPositive) {
+                    payload.setPositive(false);
+                }
+                if (!context.isAsserted) {
+                    payload.setAsserted(false);
+                }
+                if (!context.isPresent) {
+                    payload.setPresent(false);
+                }
+                if (!context.experiencerIsPatient) {
+                    payload.setPatientIsSubject(false);
+                }
+                if (context.isNegationTerminal || context.isNegationTrigger) {
+                    payload.setNegationTrigger(true);
+                }
+                if (context.isPossibleTerminal || context.isPossibleTrigger || context.isHypotheticalTerminal || context.isHypotheticalTrigger) {
+                    payload.setAssertionTrigger(true);
+                }
+                if (context.isHistoricalTerminal || context.isHistoricalTrigger) {
+                    payload.setHistoricalTrigger(true);
+                }
+                if (context.isExperiencerTerminal || context.isExperiencerTrigger) {
+                    payload.setExperiencerTrigger(true);
+                }
             }
             ret.addLast(new TokenPayloadPair(token, payload));
         }
