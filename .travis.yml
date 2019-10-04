@@ -4,7 +4,7 @@ git:
 branches:
   only:
     - master
-    - /v\d+\.\d+[a-z]?(\.\d+[a-zA-Z-_]?)/
+    - /v\d+\.\d+[a-zA-Z-_]+?(\.\d+[a-zA-Z-_]+?)/
 install:
   - mvn install -DskipTests=true -Dmaven.javadoc.skip=true -B -V
   - ant dist
