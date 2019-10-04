@@ -23,10 +23,13 @@
 
 package org.ohnlp.elasticsearchnlp;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ohnlp.elasticsearchnlp.analyzers.NLPTokenizer;
 import org.ohnlp.elasticsearchnlp.analyzers.NLPAnalyzerProvider;
 import org.ohnlp.elasticsearchnlp.elasticsearch.NLPNaiveBooleanESQueryBuilder;
 import org.ohnlp.elasticsearchnlp.script.NLPScriptEngine;
+import org.ohnlp.elasticsearchnlp.config.Config;
+
 import org.apache.lucene.analysis.Analyzer;
 import org.elasticsearch.common.ParseField;
 import org.elasticsearch.common.settings.Settings;
@@ -40,12 +43,21 @@ import org.elasticsearch.plugins.SearchPlugin;
 import org.elasticsearch.script.ScriptContext;
 import org.elasticsearch.script.ScriptEngine;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 public class ElasticsearchNLPPlugin extends Plugin implements AnalysisPlugin, ScriptPlugin, SearchPlugin {
+
+
+    public static Config CONFIG;
+
+    public ElasticsearchNLPPlugin(final Settings settings, final Path configPath) throws IOException {
+        CONFIG = new ObjectMapper().readValue(configPath.toFile(), Config.class);
+    }
 
     @Override
     public Map<String, AnalysisModule.AnalysisProvider<TokenizerFactory>> getTokenizers() {
