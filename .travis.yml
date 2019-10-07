@@ -2,9 +2,8 @@ language: java
 git:
   quiet: true
 branches:
-  only:
-    - master
-    - /v\d+\.\d+[a-zA-Z-_]+?(\.\d+[a-zA-Z-_]+?)/
+  except:
+    - gh-pages
 install:
   - mvn install -DskipTests=true -Dmaven.javadoc.skip=true -B -V
   - ant dist
