@@ -64,7 +64,7 @@ public class NLPTermQuery extends Query {
             // PRTS was pre-build for this IS
             termState = this.perReaderTermState;
         }
-        return new NLPQueryWeight(searcher, boost, scoreMode, termState, this, term);
+        return new NLPQueryWeight(searcher, boost, scoreMode, termState, this, term, term.getTerm().field());
     }
 
     @Override
