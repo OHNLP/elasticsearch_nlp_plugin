@@ -25,6 +25,7 @@ package org.ohnlp.elasticsearchnlp.config;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.ohnlp.elasticsearchnlp.config.components.ConTextConfig;
+import org.ohnlp.elasticsearchnlp.config.components.EmbeddingsConfig;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -76,6 +77,7 @@ public class Config {
 
     public static class ComponentSettings {
         private ConTextConfig context;
+        private EmbeddingsConfig embeddings;
 
         public ConTextConfig getContext() {
             return context;
@@ -83,6 +85,14 @@ public class Config {
 
         public void setContext(ConTextConfig context) {
             this.context = context;
+        }
+
+        public EmbeddingsConfig getEmbeddings() {
+            return embeddings;
+        }
+
+        public void setEmbeddings(EmbeddingsConfig embeddings) {
+            this.embeddings = embeddings;
         }
     }
 }

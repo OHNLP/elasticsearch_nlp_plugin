@@ -23,6 +23,8 @@
 
 package org.apache.lucene.search.components;
 
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.NumericDocValues;
 import org.ohnlp.elasticsearchnlp.lucene.similarity.NLPDocScorer;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -33,23 +35,26 @@ import java.io.IOException;
 
 public class NLPTermScorer extends Scorer {
     private final PostingsEnum postingsEnum;
+    private final Scorer baseScorer;
     public final NLPDocScorer docScorer;
+    private final NumericDocValues norms;
 
     /**
      * Construct a <code>TermScorer</code>.
      *
-     * @param weight
-     *          The weight of the <code>Term</code> in the query.
-     * @param td
-     *          An iterator over the documents matching the <code>Term</code>.
-     * @param docScorer
-     *          The <code>Similarity.SimScorer</code> implementation
-     *          to be used for score computations.
+     * @param weight     The weight of the <code>Term</code> in the query.
+     * @param td         An iterator over the documents matching the <code>Term</code>.
+     * @param docScorer  The <code>Similarity.SimScorer</code> implementation
+     *                   to be used for score computations.
+     * @param baseScorer The base scorer that this scoring implementation wraps
+     * @param reader
      */
-    public NLPTermScorer(Weight weight, PostingsEnum td, NLPDocScorer docScorer) {
+    public NLPTermScorer(Weight weight, PostingsEnum td, NLPDocScorer docScorer, Scorer baseScorer, LeafReader reader, String field) throws IOException {
         super(weight);
         this.docScorer = docScorer;
         this.postingsEnum = td;
+        this.baseScorer = baseScorer;
+        this.norms = reader.getNormValues(field);
     }
 
     @Override
@@ -67,13 +72,32 @@ public class NLPTermScorer extends Scorer {
     }
 
     @Override
+    public float getMaxScore(int upTo) throws IOException {
+        return baseScorer.getMaxScore(upTo);
+    }
+
+    @Override
     public float score() throws IOException {
         assert docID() != DocIdSetIterator.NO_MORE_DOCS;
         // get payload here instead?
-        return docScorer.score(postingsEnum.docID(), postingsEnum.freq());
+        return docScorer.score(postingsEnum.freq(), getNormValue(docID()));
     }
 
-    /** Returns a string representation of this <code>TermScorer</code>. */
+    private long getNormValue(int doc) throws IOException {
+        if (norms != null) {
+            boolean found = norms.advanceExact(doc);
+            assert found;
+            return norms.longValue();
+        } else {
+            return 1L; // default norm
+        }
+    }
+
+    /**
+     * Returns a string representation of this <code>TermScorer</code>.
+     */
     @Override
-    public String toString() { return "scorer(" + weight + ")[" + super.toString() + "]"; }
+    public String toString() {
+        return "scorer(" + weight + ")[" + super.toString() + "]";
+    }
 }

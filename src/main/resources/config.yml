@@ -42,5 +42,7 @@ settings:
         assertion:
           light: 1.00
           heavy: 1.00
+    # Settings for the embeddings component
     embeddings:
-      scoring-weight: 0.5
+      # The weight to assign in the range (0,1), exclusive, for the cosine similarity as a score multiplier
+      score-weight: 0.5

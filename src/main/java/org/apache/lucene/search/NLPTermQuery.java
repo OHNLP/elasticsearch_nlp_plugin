@@ -23,10 +23,10 @@
 
 package org.apache.lucene.search;
 
-import org.ohnlp.elasticsearchnlp.lucene.NLPTerm;
-import org.apache.lucene.search.components.NLPQueryWeight;
 import org.apache.lucene.index.IndexReaderContext;
-import org.apache.lucene.index.TermContext;
+import org.apache.lucene.index.TermStates;
+import org.apache.lucene.search.components.NLPQueryWeight;
+import org.ohnlp.elasticsearchnlp.lucene.NLPTerm;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -37,7 +37,7 @@ import java.util.Objects;
 public class NLPTermQuery extends Query {
 
     private final NLPTerm term;
-    private final TermContext perReaderTermState;
+    private final TermStates perReaderTermState;
 
 
     public NLPTermQuery(NLPTerm t) {
@@ -45,22 +45,16 @@ public class NLPTermQuery extends Query {
         perReaderTermState = null;
     }
 
-    public NLPTermQuery(NLPTerm t, TermContext states) {
-        assert states != null;
-        term = Objects.requireNonNull(t);
-        perReaderTermState = Objects.requireNonNull(states);
-    }
-
     @Override
-    public Weight createWeight(IndexSearcher searcher, boolean needsScores, float boost) throws IOException {
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
         final IndexReaderContext context = searcher.getTopReaderContext();
-        final TermContext termState;
+        final TermStates termState;
         if (perReaderTermState == null
                 || !perReaderTermState.wasBuiltFor(context)) {
-            if (needsScores) {
+            if (scoreMode.needsScores()) {
                 // make TermQuery single-pass if we don't have a PRTS or if the context
                 // differs!
-                termState = TermContext.build(context, term.getTerm());
+                termState = TermStates.build(context, term.getTerm(), true);
             } else {
                 // do not compute the term state, this will help save seeks in the terms
                 // dict on segments that have a cache entry for this query
@@ -70,7 +64,7 @@ public class NLPTermQuery extends Query {
             // PRTS was pre-build for this IS
             termState = this.perReaderTermState;
         }
-        return new NLPQueryWeight(searcher, boost, termState, this, term);
+        return new NLPQueryWeight(searcher, boost, scoreMode, termState, this, term);
     }
 
     @Override

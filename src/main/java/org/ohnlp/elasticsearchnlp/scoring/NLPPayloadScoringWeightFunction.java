@@ -55,43 +55,74 @@ public class NLPPayloadScoringWeightFunction {
      * @param idxPyldByteRef The {@link BytesRef} representing the payload of the term in the index
      * @return A float weight denoting the individual term score
      */
-    public static float getScoreMultiplier(BytesRef queryPyldByteRef, BytesRef idxPyldByteRef) {
+    public static double getScoreMultiplier(BytesRef queryPyldByteRef, BytesRef idxPyldByteRef) {
         // Ensure plugin initialized before loading config. We are guaranteed this method is not run prior to full config
         // init
         if (!initialized) {
             initializeWeights();
         }
         // Load bytesref into java POJO
-        // TODO this step isn't really necessary, it is here for legibility but causes a (minor) performance hit
         NLPPayload queryPyld = new NLPPayload(queryPyldByteRef);
         NLPPayload idxPyld = new NLPPayload(idxPyldByteRef);
-        float ret = 1.00f;
-        // Check and modify scores. TODO these weights can be modified
-        // Check Negation Status - Remove from consideration if mismatch
-        if (queryPyld.isPositive() != idxPyld.isPositive()) {
-            ret *= mismatch_neg;
-        } else {
-            ret *= match_neg;
+        double ret = 1.00d;
+        if (ElasticsearchNLPPlugin.CONFIG.enableConTextSupport()) {
+            // Check and modify scores based on ConText
+            // Check Negation Status - Remove from consideration if mismatch
+            if (queryPyld.isPositive() != idxPyld.isPositive()) {
+                ret *= mismatch_neg;
+            } else {
+                ret *= match_neg;
+            }
+            // Check Subject - Remove from consideration if mismatch, Heavily weight if match
+            if (queryPyld.patientIsSubject() != idxPyld.patientIsSubject()) {
+                ret *= mismatch_subj;
+            } else {
+                ret *= match_subj;
+            }
+            // Check Historical -  Penalize if Mismatch Heavily if Query Looks for Historical, Lightly Otherwise
+            if (queryPyld.isPresent() != idxPyld.isPresent()) {
+                ret *= queryPyld.isPresent() ? mismatch_temp_light : mismatch_temp_heavy;
+            } else {
+                ret *= queryPyld.isPresent() ? match_temp_light : match_temp_heavy;
+            }
+            // Check Assertion - Penalize mismatch Heavily if Query Looks for not Asserted, Lightly Otherwise
+            if (queryPyld.isAsserted() != idxPyld.isAsserted()) {
+                ret *= queryPyld.isAsserted() ? mismatch_assert_light : mismatch_assert_heavy;
+            } else {
+                ret *= queryPyld.isAsserted() ? match_assert_light : match_assert_heavy;
+            }
         }
-        // Check Subject - Remove from consideration if mismatch, Heavily weight if match
-        if (queryPyld.patientIsSubject() != idxPyld.patientIsSubject()) {
-            ret *= mismatch_subj;
-        } else {
-            ret *= match_subj;
-        }
-        // Check Historical -  Penalize if Mismatch Heavily if Query Looks for Historical, Lightly Otherwise
-        if (queryPyld.isPresent() != idxPyld.isPresent()) {
-            ret *= queryPyld.isPresent() ? mismatch_temp_light : mismatch_temp_heavy;
-        } else {
-            ret *= queryPyld.isPresent() ? match_temp_light : match_temp_heavy;
-        }
-        // Check Assertion - Penalize mismatch Heavily if Query Looks for not Asserted, Lightly Otherwise
-        if (queryPyld.isAsserted() != idxPyld.isAsserted()) {
-            ret *= queryPyld.isAsserted() ? mismatch_assert_light : mismatch_assert_heavy;
-        } else {
-            ret *= queryPyld.isAsserted() ? match_assert_light : match_assert_heavy;
+        if (ElasticsearchNLPPlugin.CONFIG.enableEmbeddings()) {
+            double scoreWeight = ElasticsearchNLPPlugin.CONFIG.getSettings().getEmbeddings().getScore_weight();
+            float[] queryEmbs = queryPyld.getEmbeddings();
+            float[] indexEmbs = queryPyld.getEmbeddings();
+            double sim = cosSim(queryEmbs, indexEmbs);
+            ret = (ret * (1 - scoreWeight)) + (sim * scoreWeight);
         }
         return ret;
+    }
+
+    /**
+     * Calculates the cosine similarity between arg1 and arg2
+     * @param arg1 vector 1
+     * @param arg2 vector 2
+     * @return The cosine similarity
+     * @throws IllegalArgumentException if arg1.length != arg2.length
+     */
+    private static double cosSim(float[] arg1, float[] arg2) {
+        if (arg1.length != arg2.length) {
+            throw new IllegalArgumentException("Embeddings dimensions differ! Arg 1 embeddings length: " + arg1.length
+                    + " Arg 2 embeddings length: " + arg2.length);
+        }
+        double dot = 0.0;
+        double norm1 = 0.0;
+        double norm2 = 0.0;
+        for (int i = 0; i < arg1.length; i++) {
+            dot += arg1[i] * arg2[i];
+            norm1 += Math.pow(arg1[i], 2);
+            norm2 += Math.pow(arg2[i], 2);
+        }
+        return dot / (Math.sqrt(norm1) * Math.sqrt(norm2));
     }
 
     private static void initializeWeights() {
@@ -121,7 +152,7 @@ public class NLPPayloadScoringWeightFunction {
      * @return An explanation for how the float weight is derived
      */
     public static Explanation generateExplanation(BytesRef queryPyld, BytesRef idxPyld) {
-        float weight = getScoreMultiplier(queryPyld, idxPyld);
+        double weight = getScoreMultiplier(queryPyld, idxPyld);
         // Load bytesref into java POJO
         byte[] queryPyldBytes = Arrays.copyOfRange(queryPyld.bytes, queryPyld.offset, queryPyld.offset + queryPyld.length);
         byte[] idxPyldBytes = Arrays.copyOfRange(idxPyld.bytes, idxPyld.offset, idxPyld.offset + idxPyld.length);

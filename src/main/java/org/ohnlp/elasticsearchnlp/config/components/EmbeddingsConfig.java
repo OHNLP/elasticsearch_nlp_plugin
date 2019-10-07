@@ -21,21 +21,16 @@
  *  limitations under the License.
  */
 
-package org.ohnlp.elasticsearchnlp.lucene.similarity;
+package org.ohnlp.elasticsearchnlp.config.components;
 
-import org.apache.lucene.search.similarities.Similarity;
+public class EmbeddingsConfig {
+    private double score_weight;
 
-/**
- * A wrapper around a base sim weight
- */
-public class NLPTermSimWeight extends Similarity.SimWeight {
-    private final Similarity.SimWeight base;
-
-    public NLPTermSimWeight(Similarity.SimWeight base) {
-        this.base = base;
+    public double getScore_weight() {
+        return score_weight;
     }
 
-    public Similarity.SimWeight getBase() {
-        return base;
+    public void setScore_weight(double score_weight) {
+        this.score_weight = score_weight;
     }
 }

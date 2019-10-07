@@ -32,6 +32,9 @@ import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.BytesRef;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -39,30 +42,38 @@ import java.util.Set;
  */
 public class NLPQueryWeight extends Weight {
 
+    private final TermStates termState;
+    private final float boost;
+    private final IndexSearcher searcher;
+    private final ScoreMode scoreMode;
+    private final String field;
     private Term term;
     private BytesRef pyld;
-    private TermContext termState;
     private Similarity similarity;
-    private Similarity.SimWeight stats;
+    private Weight baseWeight;
 
     public NLPQueryWeight(IndexSearcher searcher,
-                          float boost, TermContext termStates, Query srcQry, NLPTerm t) throws IOException {
+                          float boost, ScoreMode scoreMode, TermStates termStates, Query srcQry, NLPTerm t, String field) throws IOException {
         super(srcQry);
         if (termStates == null) {
             throw new IllegalStateException("termStates are required for scores");
         }
+
+        this.searcher = searcher;
         this.term = t.getTerm();
         this.pyld = t.getPyld();
+        this.field = field;
+
+        this.similarity = new NLPSimilarity(searcher.getSimilarity(), t);
         this.termState = termStates;
+        this.boost = boost;
 
-        this.similarity = new NLPSimilarity(searcher.getSimilarity(true), t);
+        this.scoreMode = scoreMode;
 
-        final CollectionStatistics collectionStats = searcher.collectionStatistics(term.field());
-        final TermStatistics termStats = searcher.termStatistics(term, termStates);
-
-
-        this.stats = similarity.computeWeight(boost, collectionStats, termStats);
+        this.baseWeight = searcher.createWeight(srcQry, scoreMode, boost);
     }
+
+
 
     @Override
     public void extractTerms(Set<Term> terms) {
@@ -75,9 +86,9 @@ public class NLPQueryWeight extends Weight {
         if (scorer != null) {
             int newDoc = scorer.iterator().advance(doc);
             if (newDoc == doc) {
-                float freq = scorer.freq(); // TODO
+                float freq = scorer.freq();
                 Explanation freqExplanation = Explanation.match(freq, "termFreq=" + freq);
-                return scorer.docScorer.explain(doc, freqExplanation);
+                return scorer.docScorer.explain(freqExplanation, doc); // TODO 7.3.x update
             }
         }
         return Explanation.noMatch("No matching term");
@@ -85,17 +96,24 @@ public class NLPQueryWeight extends Weight {
 
     @Override
     public Scorer scorer(LeafReaderContext context) throws IOException {
-        assert termState == null || termState.wasBuiltFor(ReaderUtil.getTopLevelContext(context)) : "The top-reader used to create Weight is not the same as the current reader's top-reader (" + ReaderUtil.getTopLevelContext(context);
-        ;
         final TermsEnum termsEnum = getTermsEnum(context);
+        Scorer baseScorer = baseWeight.scorer(context);
         if (termsEnum == null) {
             return null;
         }
+        ArrayList<TermStatistics> allTermStats = new ArrayList<>();
+
+        if (scoreMode.needsScores()) {
+            TermStatistics termStatistics = searcher.termStatistics(term, termState);
+            if (termStatistics != null) {
+                allTermStats.add(termStatistics);
+            }
+        }
         PostingsEnum docs = termsEnum.postings(null, PostingsEnum.ALL);
         assert docs != null;
-        NLPDocScorer simScorer = (NLPDocScorer) similarity.simScorer(stats, context);
+        NLPDocScorer simScorer = (NLPDocScorer) similarity.scorer(boost, searcher.collectionStatistics(field), allTermStats.toArray(new TermStatistics[0]));
         simScorer.setPostings(docs);
-        return new NLPTermScorer(this, docs, simScorer);
+        return new NLPTermScorer(this, docs, simScorer, baseScorer, context.reader(), field);
     }
 
     // Mostly copied from elasticsearch
@@ -103,7 +121,7 @@ public class NLPQueryWeight extends Weight {
         if (termState != null) {
             // TermQuery either used as a Query or the term states have been provided at construction time
             assert termState.wasBuiltFor(ReaderUtil.getTopLevelContext(context)) : "The top-reader used to create Weight is not the same as the current reader's top-reader (" + ReaderUtil.getTopLevelContext(context);
-            final TermState state = termState.get(context.ord);
+            final TermState state = termState.get(context);
             if (state == null) { // term is not present in that reader
                 return null;
             }
