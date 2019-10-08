@@ -23,10 +23,13 @@
 
 package org.ohnlp.elasticsearchnlp;
 
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.apache.lucene.analysis.Analyzer;
 import org.elasticsearch.common.ParseField;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.env.Environment;
 import org.elasticsearch.index.analysis.AnalyzerProvider;
 import org.elasticsearch.index.analysis.TokenizerFactory;
 import org.elasticsearch.indices.analysis.AnalysisModule;
@@ -42,8 +45,12 @@ import org.ohnlp.elasticsearchnlp.config.Config;
 import org.ohnlp.elasticsearchnlp.elasticsearch.NLPNaiveBooleanESQueryBuilder;
 import org.ohnlp.elasticsearchnlp.script.NLPScriptEngine;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -54,7 +61,27 @@ public class ElasticsearchNLPPlugin extends Plugin implements AnalysisPlugin, Sc
     public static Config CONFIG;
 
     public ElasticsearchNLPPlugin(final Settings settings, final Path configPath) throws IOException {
-        CONFIG = new ObjectMapper().readValue(configPath.toFile(), Config.class);
+        File configDirFile = configPath.toFile();
+        if (!configDirFile.exists() && !configDirFile.mkdirs()) {
+            throw new IllegalStateException("Could not initialize config directory");
+        }
+        Path configFilePath = configPath.resolve("elasticsearch-nlp-plugin.yml");
+        File configFile = configFilePath.toFile();
+        if (!configFile.exists()) {
+            Files.copy(ElasticsearchNLPPlugin.class.getResourceAsStream("/elasticsearch-nlp-plugin.yml"), configFilePath);
+        }
+        ObjectMapper om = new ObjectMapper(new YAMLFactory());
+        om.disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS);
+
+        CONFIG = AccessController.doPrivileged((PrivilegedAction<Config>)() -> {
+            try {
+                return om.treeToValue(om.readTree(configFile).get("esnlp"), Config.class);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
+        });
+
     }
 
     @Override
