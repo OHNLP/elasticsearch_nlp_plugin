@@ -70,7 +70,7 @@ public final class ConTexTAwareTokenizer extends Tokenizer {
     private StringBuilder str;
     private String document;
     private char[] buffer;
-    private Deque<TokenPayloadPair> tokenQueue;
+    public Deque<TokenPayloadPair> tokenQueue;
 
     private final CharTermAttribute termAtt;
     private final OffsetAttribute offsetAtt;
@@ -226,7 +226,7 @@ public final class ConTexTAwareTokenizer extends Tokenizer {
      * @param triggersByPriority priorities to flatten
      * @return A flattened view with higher priority triggers overwriting lower priority triggers
      */
-    private Map<ConTexTTrigger.TriggerType, List<ConTexTTrigger>> flattenByPriority(Deque<Map<ConTexTTrigger.TriggerType, List<ConTexTTrigger>>> triggersByPriority) {
+    public Map<ConTexTTrigger.TriggerType, List<ConTexTTrigger>> flattenByPriority(Deque<Map<ConTexTTrigger.TriggerType, List<ConTexTTrigger>>> triggersByPriority) {
         if (triggersByPriority.size() == 1) {
             return triggersByPriority.poll();
         }
@@ -630,13 +630,21 @@ public final class ConTexTAwareTokenizer extends Tokenizer {
 
     }
 
-    private static class TokenPayloadPair {
+    public static class TokenPayloadPair {
         private final Span token;
         private final NLPPayload payload;
 
         public TokenPayloadPair(Span token, NLPPayload payload) {
             this.token = token;
             this.payload = payload;
+        }
+
+        public Span getToken() {
+            return token;
+        }
+
+        public NLPPayload getPayload() {
+            return payload;
         }
     }
 }
