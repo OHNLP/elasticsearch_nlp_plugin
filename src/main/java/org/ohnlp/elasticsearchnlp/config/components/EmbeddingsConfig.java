@@ -25,6 +25,8 @@ package org.ohnlp.elasticsearchnlp.config.components;
 
 public class EmbeddingsConfig {
     private double score_weight;
+    private int dim_size;
+    private boolean ne_only;
 
     public double getScore_weight() {
         return score_weight;
@@ -32,5 +34,21 @@ public class EmbeddingsConfig {
 
     public void setScore_weight(double score_weight) {
         this.score_weight = score_weight;
+    }
+
+    public int getDim_size() {
+        return dim_size;
+    }
+
+    public void setDim_size(int dim_size) {
+        this.dim_size = dim_size;
+    }
+
+    public boolean isNe_only() {
+        return ne_only;
+    }
+
+    public void setNe_only(boolean ne_only) {
+        this.ne_only = ne_only;
     }
 }

@@ -50,16 +50,8 @@ public class NLPTermQuery extends Query {
         final IndexReaderContext context = searcher.getTopReaderContext();
         final TermStates termState;
         if (perReaderTermState == null
-                || !perReaderTermState.wasBuiltFor(context)) {
-            if (scoreMode.needsScores()) {
-                // make TermQuery single-pass if we don't have a PRTS or if the context
-                // differs!
-                termState = TermStates.build(context, term.getTerm(), true);
-            } else {
-                // do not compute the term state, this will help save seeks in the terms
-                // dict on segments that have a cache entry for this query
-                termState = null;
-            }
+                || perReaderTermState.wasBuiltFor(context) == false) {
+            termState = TermStates.build(context, term.getTerm(), scoreMode.needsScores());
         } else {
             // PRTS was pre-build for this IS
             termState = this.perReaderTermState;

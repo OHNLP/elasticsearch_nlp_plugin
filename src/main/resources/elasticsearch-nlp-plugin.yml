@@ -45,4 +45,8 @@ esnlp:
     # Settings for the embeddings component
     embeddings:
       # The weight to assign in the range (0,1), exclusive, for the cosine similarity as a score multiplier
-      score-weight: 0.5
+      score_weight: 0.5
+      # Embeddings dimension size
+      dim_size: 200
+      # Run embedding weighting only on identified named entities
+      ne_only: true

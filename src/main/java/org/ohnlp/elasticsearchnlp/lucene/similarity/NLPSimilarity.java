@@ -24,6 +24,7 @@
 package org.ohnlp.elasticsearchnlp.lucene.similarity;
 
 import org.apache.lucene.index.FieldInvertState;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.TermStatistics;

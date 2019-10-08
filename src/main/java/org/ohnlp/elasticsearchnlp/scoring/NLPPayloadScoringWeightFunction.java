@@ -95,7 +95,7 @@ public class NLPPayloadScoringWeightFunction {
         if (ElasticsearchNLPPlugin.CONFIG.enableEmbeddings()) {
             double scoreWeight = ElasticsearchNLPPlugin.CONFIG.getSettings().getEmbeddings().getScore_weight();
             float[] queryEmbs = queryPyld.getEmbeddings();
-            float[] indexEmbs = queryPyld.getEmbeddings();
+            float[] indexEmbs = idxPyld.getEmbeddings();
             double sim = cosSim(queryEmbs, indexEmbs);
             ret = (ret * (1 - scoreWeight)) + (sim * scoreWeight);
         }

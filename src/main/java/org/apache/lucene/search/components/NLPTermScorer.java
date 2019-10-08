@@ -35,7 +35,6 @@ import java.io.IOException;
 
 public class NLPTermScorer extends Scorer {
     private final PostingsEnum postingsEnum;
-    private final Scorer baseScorer;
     public final NLPDocScorer docScorer;
     private final NumericDocValues norms;
 
@@ -46,14 +45,12 @@ public class NLPTermScorer extends Scorer {
      * @param td         An iterator over the documents matching the <code>Term</code>.
      * @param docScorer  The <code>Similarity.SimScorer</code> implementation
      *                   to be used for score computations.
-     * @param baseScorer The base scorer that this scoring implementation wraps
      * @param reader
      */
-    public NLPTermScorer(Weight weight, PostingsEnum td, NLPDocScorer docScorer, Scorer baseScorer, LeafReader reader, String field) throws IOException {
+    public NLPTermScorer(Weight weight, PostingsEnum td, NLPDocScorer docScorer, LeafReader reader, String field) throws IOException {
         super(weight);
         this.docScorer = docScorer;
         this.postingsEnum = td;
-        this.baseScorer = baseScorer;
         this.norms = reader.getNormValues(field);
     }
 
@@ -73,7 +70,7 @@ public class NLPTermScorer extends Scorer {
 
     @Override
     public float getMaxScore(int upTo) throws IOException {
-        return baseScorer.getMaxScore(upTo);
+        return Float.POSITIVE_INFINITY;
     }
 
     @Override
@@ -83,7 +80,7 @@ public class NLPTermScorer extends Scorer {
         return docScorer.score(postingsEnum.freq(), getNormValue(docID()));
     }
 
-    private long getNormValue(int doc) throws IOException {
+    public long getNormValue(int doc) throws IOException {
         if (norms != null) {
             boolean found = norms.advanceExact(doc);
             assert found;

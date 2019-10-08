@@ -34,6 +34,7 @@ import org.ohnlp.elasticsearchnlp.scoring.NLPPayloadScoringWeightFunction;
 
 import java.io.IOException;
 import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Wrapper for doc scorer
@@ -46,7 +47,7 @@ public class NLPDocScorer extends Similarity.SimScorer {
 
     private PostingsEnum postings;
 
-    public NLPDocScorer(Similarity.SimScorer baseScorer, LeafReader reader, Term term, BytesRef pyld) {
+    public NLPDocScorer(Similarity.SimScorer baseScorer, Term term, BytesRef pyld) {
         this.baseScorer = baseScorer;
         this.term = term;
         this.pyld = pyld;
@@ -109,6 +110,7 @@ public class NLPDocScorer extends Similarity.SimScorer {
                     weight += val;
                     subs.add(NLPPayloadScoringWeightFunction.generateExplanation(pyld, idxPyld));
                 } else {
+                    subs.add(Explanation.match(1, "Removed from term frequency due to NLP mismatch: query: " + new NLPPayload(pyld).toString() + " index: " + new NLPPayload(idxPyld).toString()));
                     weightCount--; // Not a valid match/different subject
                 }
             }
@@ -129,7 +131,7 @@ public class NLPDocScorer extends Similarity.SimScorer {
             subs.addFirst(Explanation.match(base.getValue(), baseScorer.getClass().getSimpleName() + ": " + base.getDescription(), base.getDetails()));
             return Explanation.match(
                     base.getValue().doubleValue() * weight,
-                    "score(term=" + term + ", term frequency=" + freq + ", same subject match=" + weightCount + ",nlp context weight=" + weight + "), product of:", subs);
+                    "score(term=" + term + ", term frequency=" + correctBaseFreq + ", same subject match=" + weightCount + ",nlp context weight=" + weight + "), product of:", subs);
         } catch (IOException e) {
             throw new RuntimeException("Error occurred during explanation generation!", e);
         }
