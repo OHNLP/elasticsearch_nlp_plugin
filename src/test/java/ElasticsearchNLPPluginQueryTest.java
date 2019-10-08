@@ -27,6 +27,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.test.ESIntegTestCase;
+import org.hamcrest.Matchers;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -72,12 +73,10 @@ public class ElasticsearchNLPPluginQueryTest extends ESIntegTestCase {
     @Test
     public void verifyConfigLoad() {
         Assert.assertNotNull(ElasticsearchNLPPlugin.CONFIG);
-        Assert.assertArrayEquals(
-                ElasticsearchNLPPlugin.CONFIG.getEnabled().toArray(),
-                Arrays.asList(
-                        Config.NLPComponent.CLINICAL_STOP_WORDS,
-                        Config.NLPComponent.CONTEXT
-                ).toArray());
+        Assert.assertThat(new HashSet<>(ElasticsearchNLPPlugin.CONFIG.getEnabled()), Matchers.is(new HashSet<>(Arrays.asList(
+                Config.NLPComponent.CLINICAL_STOP_WORDS,
+                Config.NLPComponent.CONTEXT
+        ))));
     }
 
     /**
