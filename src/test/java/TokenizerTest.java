@@ -21,6 +21,7 @@
  *  limitations under the License.
  */
 
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.junit.Assert;
@@ -33,6 +34,8 @@ import org.ohnlp.elasticsearchnlp.payloads.NLPPayload;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Deque;
 
 public class TokenizerTest {
@@ -41,7 +44,16 @@ public class TokenizerTest {
     @Before
     public void loadConfig() throws IOException {
         ObjectMapper om = new ObjectMapper(new YAMLFactory());
-        ElasticsearchNLPPlugin.CONFIG = om.treeToValue(om.readTree(TokenizerTest.class.getResourceAsStream("/elasticsearch-nlp-plugin.yml")).get("esnlp"), Config.class);
+        om.disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS);
+
+        ElasticsearchNLPPlugin.CONFIG = AccessController.doPrivileged((PrivilegedAction<Config>)() -> {
+            try {
+                return om.treeToValue(om.readTree(TokenizerTest.class.getResourceAsStream("/elasticsearch-nlp-plugin.yml")).get("esnlp"), Config.class);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
+        });
     }
 
     @Test

@@ -73,7 +73,15 @@ public class ElasticsearchNLPPlugin extends Plugin implements AnalysisPlugin, Sc
         ObjectMapper om = new ObjectMapper(new YAMLFactory());
         om.disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS);
 
-        CONFIG = om.treeToValue(om.readTree(configFile).get("esnlp"), Config.class);
+        CONFIG = AccessController.doPrivileged((PrivilegedAction<Config>)() -> {
+            try {
+                return om.treeToValue(om.readTree(configFile).get("esnlp"), Config.class);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
+        });
+
     }
 
     @Override
