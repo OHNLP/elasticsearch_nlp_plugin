@@ -30,6 +30,8 @@ public class ConTextConfig {
 
     public ConTextWeightConfig weights;
 
+    public ConTextConfig() {}
+
     public ConTextWeightConfig getWeights() {
         return weights;
     }
@@ -41,6 +43,9 @@ public class ConTextConfig {
     public static class ConTextWeightConfig {
         public ConTextWeights match;
         public ConTextWeights mismatch;
+
+        public ConTextWeightConfig() {
+        }
 
         public ConTextWeights getMatch() {
             return match;
@@ -64,6 +69,9 @@ public class ConTextConfig {
         private double subject;
         private ComplexWeight temporal;
         private ComplexWeight assertion;
+
+        public ConTextWeights() {
+        }
 
         public double getNegation() {
             return negation;
@@ -101,6 +109,9 @@ public class ConTextConfig {
     public static class ComplexWeight {
         private double light;
         private double heavy;
+
+        public ComplexWeight() {
+        }
 
         public double getLight() {
             return light;

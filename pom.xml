@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>edu.mayo.nlp.elasticsearch</groupId>
+    <groupId>org.ohnlp.elasticsearchnlp</groupId>
     <artifactId>Elasticsearch-NLP-Plugin</artifactId>
     <version>1.0-SNAPSHOT</version>
 
@@ -61,12 +61,17 @@
         </plugins>
     </build>
 
+    <properties>
+        <elasticsearch.version>7.3.0</elasticsearch.version>
+    </properties>
+
     <dependencies>
-        <dependency>
-            <groupId>org.elasticsearch</groupId>
-            <artifactId>elasticsearch</artifactId>
-            <version>7.3.0</version>
-        </dependency>
+         <dependency>
+             <groupId>org.elasticsearch</groupId>
+             <artifactId>elasticsearch</artifactId>
+             <version>${elasticsearch.version}</version>
+             <scope>provided</scope>
+         </dependency>
         <dependency>
             <groupId>org.apache.opennlp</groupId>
             <artifactId>opennlp-tools</artifactId>
@@ -89,12 +94,6 @@
         </dependency>
         <!-- Test Dependencies -->
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.12</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
             <version>2.9.10</version>
@@ -108,6 +107,25 @@
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-yaml</artifactId>
             <version>2.9.10</version>
+        </dependency>
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>2.11.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.elasticsearch.test</groupId>
+            <artifactId>framework</artifactId>
+            <version>${elasticsearch.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.elasticsearch.client</groupId>
+            <artifactId>elasticsearch-rest-high-level-client</artifactId>
+            <version>${elasticsearch.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

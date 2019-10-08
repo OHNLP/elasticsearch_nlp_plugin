@@ -23,6 +23,7 @@
 
 package org.ohnlp.elasticsearchnlp;
 
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ohnlp.elasticsearchnlp.analyzers.NLPTokenizer;
 import org.ohnlp.elasticsearchnlp.analyzers.NLPAnalyzerProvider;
@@ -30,6 +31,7 @@ import org.ohnlp.elasticsearchnlp.elasticsearch.NLPNaiveBooleanESQueryBuilder;
 import org.ohnlp.elasticsearchnlp.script.NLPScriptEngine;
 import org.ohnlp.elasticsearchnlp.config.Config;
 
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.apache.lucene.analysis.Analyzer;
 import org.elasticsearch.common.ParseField;
 import org.elasticsearch.common.settings.Settings;
@@ -43,8 +45,12 @@ import org.elasticsearch.plugins.SearchPlugin;
 import org.elasticsearch.script.ScriptContext;
 import org.elasticsearch.script.ScriptEngine;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -52,11 +58,30 @@ import java.util.Map;
 
 public class ElasticsearchNLPPlugin extends Plugin implements AnalysisPlugin, ScriptPlugin, SearchPlugin {
 
-
     public static Config CONFIG;
 
     public ElasticsearchNLPPlugin(final Settings settings, final Path configPath) throws IOException {
-        CONFIG = new ObjectMapper().readValue(configPath.toFile(), Config.class);
+        File configDirFile = configPath.toFile();
+        if (!configDirFile.exists() && !configDirFile.mkdirs()) {
+            throw new IllegalStateException("Could not initialize config directory");
+        }
+        Path configFilePath = configPath.resolve("elasticsearch-nlp-plugin.yml");
+        File configFile = configFilePath.toFile();
+        if (!configFile.exists()) {
+            Files.copy(ElasticsearchNLPPlugin.class.getResourceAsStream("/elasticsearch-nlp-plugin.yml"), configFilePath);
+        }
+        ObjectMapper om = new ObjectMapper(new YAMLFactory());
+        om.disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS);
+
+        CONFIG = AccessController.doPrivileged((PrivilegedAction<Config>)() -> {
+            try {
+                return om.treeToValue(om.readTree(configFile).get("esnlp"), Config.class);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
+        });
+
     }
 
     @Override
