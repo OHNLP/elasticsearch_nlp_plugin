@@ -23,6 +23,7 @@
 
 package org.ohnlp.elasticsearchnlp;
 
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.apache.lucene.analysis.Analyzer;
@@ -70,15 +71,9 @@ public class ElasticsearchNLPPlugin extends Plugin implements AnalysisPlugin, Sc
             Files.copy(ElasticsearchNLPPlugin.class.getResourceAsStream("/elasticsearch-nlp-plugin.yml"), configFilePath);
         }
         ObjectMapper om = new ObjectMapper(new YAMLFactory());
-        CONFIG = AccessController.doPrivileged((PrivilegedAction<Config>)() -> {
-            try {
-                return om.treeToValue(om.readTree(configFile).get("esnlp"), Config.class);
-            } catch (IOException e) {
-                e.printStackTrace();
-                return null;
-            }
-        });
+        om.disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS);
 
+        CONFIG = om.treeToValue(om.readTree(configFile).get("esnlp"), Config.class);
     }
 
     @Override
