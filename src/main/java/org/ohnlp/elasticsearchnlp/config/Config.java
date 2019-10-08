@@ -37,6 +37,8 @@ public class Config {
     private Collection<NLPComponent> enabled;
     private ComponentSettings settings;
 
+    public Config() {}
+
     public Collection<NLPComponent> getEnabled() {
         return enabled;
     }
@@ -70,6 +72,8 @@ public class Config {
 
     public static class ComponentSettings {
         private ConTextConfig context;
+
+        public ComponentSettings() {}
 
         public ConTextConfig getContext() {
             return context;
