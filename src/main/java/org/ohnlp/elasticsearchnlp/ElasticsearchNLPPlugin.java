@@ -48,6 +48,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -68,7 +70,15 @@ public class ElasticsearchNLPPlugin extends Plugin implements AnalysisPlugin, Sc
             Files.copy(ElasticsearchNLPPlugin.class.getResourceAsStream("/elasticsearch-nlp-plugin.yml"), configFilePath);
         }
         ObjectMapper om = new ObjectMapper(new YAMLFactory());
-        CONFIG = om.treeToValue(om.readTree(configFile).get("esnlp"), Config.class);
+        CONFIG = AccessController.doPrivileged((PrivilegedAction<Config>)() -> {
+            try {
+                return om.treeToValue(om.readTree(configFile).get("esnlp"), Config.class);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
+        });
+
     }
 
     @Override
