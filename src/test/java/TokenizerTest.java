@@ -35,13 +35,13 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.Deque;
 
-public class TokenizerTests {
+public class TokenizerTest {
     private static String TESTSTRING = "Mr. Test presents today with heartburn and possible fmhx GERD.";
 
     @Before
     public void loadConfig() throws IOException {
         ObjectMapper om = new ObjectMapper(new YAMLFactory());
-        ElasticsearchNLPPlugin.CONFIG = om.treeToValue(om.readTree(TokenizerTests.class.getResourceAsStream("/elasticsearch-nlp-plugin.yml")).get("esnlp"), Config.class);
+        ElasticsearchNLPPlugin.CONFIG = om.treeToValue(om.readTree(TokenizerTest.class.getResourceAsStream("/elasticsearch-nlp-plugin.yml")).get("esnlp"), Config.class);
     }
 
     @Test

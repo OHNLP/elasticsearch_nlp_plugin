@@ -40,7 +40,7 @@ import java.util.*;
  * Loads plugin into an ES cluster and runs individual test cases via queries
  */
 @ESIntegTestCase.ClusterScope(scope = ESIntegTestCase.Scope.SUITE, numDataNodes = 1, numClientNodes = 1)
-public class ElasticsearchNLPPluginQueryTests extends ESIntegTestCase {
+public class ElasticsearchNLPPluginQueryTest extends ESIntegTestCase {
 
     private static Map<String, String> DOCUMENTS;
 
