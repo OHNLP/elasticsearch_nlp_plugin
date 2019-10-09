@@ -40,15 +40,3 @@ esnlp:
           assertion:
             light: 1.00
             heavy: 1.00
-#    # Settings for the embeddings component
-#    embeddings:
-#      # The weight to assign in the range (0,1), exclusive, for the cosine similarity as a score multiplier
-#      score_weight: 0.5
-#      # Embeddings dimension size
-#      dim_size: 768
-#      # Run embedding weighting only on identified named entities
-#      ne_only: true
-#      # Strip wordpiece fragments (##suffix) during tokenization
-#      # By default this is false as it can cause some issues in the medical domain. For the purposes of tokenization
-#      # and association of values, embeddings are concatenated
-#      remove_wordpiece: false
