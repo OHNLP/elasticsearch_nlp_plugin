@@ -3,7 +3,10 @@ An Elasticsearch Plugin that Integrates NLP Capabilities into IR Scoring Algorit
 
 ## Pre-requisites
 This plugin requires Java 8+
-This plugin currently supports and requires Elasticsearch 7.3.0. Due to fundamental changes in underlying lucene data structures 
+
+This plugin currently supports and requires Elasticsearch 7.3.0. 
+
+Due to fundamental changes in underlying lucene data structures 
 between versions, it is currently unfeasible to support multiple versions of ES, although that may change in the future.
 
 For the purposes of backreferencing, the supported Elasticsearch versions of each major release are listed below,
