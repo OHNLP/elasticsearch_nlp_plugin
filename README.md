@@ -11,8 +11,8 @@ between versions, it is currently unfeasible to support multiple versions of ES,
 
 For the purposes of backreferencing, the supported Elasticsearch versions of each major release are listed below,
 in reverse chronological order, although features are not backported between versions
-*v1.0.1 - Elasticsearch 7.3.0
-*v1.0.0 - Elasticsearch 6.6.0
+- v1.0.1 - Elasticsearch 7.3.0
+- v1.0.0 - Elasticsearch 6.6.0
 
 ## Installation
 1. Please direct yourself to the [releases page](https://github.com/OHNLP/elasticsearch_nlp_plugin/releases) and download the `ES-NLP-PLUGIN.zip`
