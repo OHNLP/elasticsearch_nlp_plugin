@@ -27,6 +27,7 @@ public class EmbeddingsConfig {
     private double score_weight;
     private int dim_size;
     private boolean ne_only;
+    private boolean remove_wordpiece;
 
     public double getScore_weight() {
         return score_weight;
@@ -50,5 +51,13 @@ public class EmbeddingsConfig {
 
     public void setNe_only(boolean ne_only) {
         this.ne_only = ne_only;
+    }
+
+    public boolean isRemove_wordpiece() {
+        return remove_wordpiece;
+    }
+
+    public void setRemove_wordpiece(boolean remove_wordpiece) {
+        this.remove_wordpiece = remove_wordpiece;
     }
 }

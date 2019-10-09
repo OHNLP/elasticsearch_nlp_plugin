@@ -23,8 +23,8 @@
 
 package org.ohnlp.elasticsearchnlp.analyzers;
 
-import com.robrua.nlp.bert.BasicTokenizer;
-import com.robrua.nlp.bert.Bert;
+//import com.robrua.nlp.bert.Bert;
+//import com.robrua.nlp.bert.FullTokenizer;
 import org.ohnlp.elasticsearchnlp.ElasticsearchNLPPlugin;
 import org.ohnlp.elasticsearchnlp.context.ConTexTSettings;
 import org.ohnlp.elasticsearchnlp.context.ConTexTStatus;
@@ -85,7 +85,8 @@ public final class NLPTokenizer extends Tokenizer {
     private TokenizerME tokenizer;
     private SentenceDetectorME sentenceDetector;
     private static final int MAX_WIN_SIZE = -1;
-    private Bert bert;
+//    private Bert bert;
+//    private FullTokenizer bertTokenizer;
 
     // Starts a new UIMA pipeline on initialization
     public NLPTokenizer() {
@@ -109,7 +110,14 @@ public final class NLPTokenizer extends Tokenizer {
         tokenizer = new TokenizerME(tokModel);
         SentenceModel sentModel = new SentenceModel(NLPTokenizer.class.getResourceAsStream("/models/en-sent.bin"));
         sentenceDetector = new SentenceDetectorME(sentModel);
-        bert = Bert.load("com/robrua/nlp/easy-bert/bert-uncased-L-12-H-768-A-12");
+//        bert = Bert.load("com/robrua/nlp/easy-bert/bert-uncased-L-12-H-768-A-12");
+//        try {
+//            Field f = Bert.class.getDeclaredField("tokenizer");
+//            f.setAccessible(true);
+//            this.bertTokenizer = (FullTokenizer) f.get(bert);
+//        } catch (NoSuchFieldException | IllegalAccessException e) {
+//            e.printStackTrace();
+//        }
     }
 
 
@@ -172,11 +180,12 @@ public final class NLPTokenizer extends Tokenizer {
      */
     private Deque<TokenPayloadPair> createNLPPayloads() {
         Deque<TokenPayloadPair> ret = new LinkedList<>();
-        Deque<Float> embeddings = new LinkedList<>();
+        Deque<float[]> embeddings = new LinkedList<>();
         ConTexTStatus[] documentContexts = new ConTexTStatus[document.length()];
         for (int i = 0; i < documentContexts.length; i++) {
             documentContexts[i] = new ConTexTStatus();
         }
+        List<Span> actualSentences = new LinkedList<>(); // We do further subsplitting so save for later use
         // Populate ConTexts and Embeddings  by sentence if enabled
         for (Span sentence : sentenceDetector.sentPosDetect(document)) {
             // TODO: not really efficient, better to just directly put into the destination array instead of copying
@@ -189,56 +198,78 @@ public final class NLPTokenizer extends Tokenizer {
                     Map<ConTexTTrigger.TriggerType, List<ConTexTTrigger>> triggers = flattenByPriority(triggersByPriority);
                     // Annotate and copy context statuses to the document contexts
                     System.arraycopy(annotateConTextStatuses(triggers, subText), 0, documentContexts, start, subText.length());
+                    actualSentences.add(new Span(start, start + subText.length()));
                     start += subText.length();
                 }
-                if (ElasticsearchNLPPlugin.CONFIG.enableEmbeddings()) {
-                    // Go through tokens in order
-                    for (float embedding : bert.embedSequence(subText)) {
-                        embeddings.addLast(embedding);
-                    }
-                }
+//                if (ElasticsearchNLPPlugin.CONFIG.enableEmbeddings()) {
+//                    // Go through tokens in order and add their embeddings to the queue
+//                    String[] tokens = tokenizer.tokenize(subText);
+//                    float[][] sentEmbeddings = bert.embedTokens(subText);
+//                    Map<String, LinkedList<Integer>> idxes = originalTokensToBertIndex(tokens);
+//                    for (String token : tokens) { // Iterate in-order through the tokens
+//                        embeddings.addLast(sentEmbeddings[idxes.get(token).removeFirst()]);
+//                    }
+//                }
             }
         }
 
-        // Iterate through tokens to generate token/payload pairs.
-        for (Span token : tokenizer.tokenizePos(document)) {
-            NLPPayload payload = new NLPPayload();
-            if (ElasticsearchNLPPlugin.CONFIG.enableConTextSupport()) {
-                ConTexTStatus context = documentContexts[token.getStart()]; // TODO: more comprehensive check than first character collision
-                if (!context.isPositive) {
-                    payload.setPositive(false);
-                }
-                if (!context.isAsserted) {
-                    payload.setAsserted(false);
-                }
-                if (!context.isPresent) {
-                    payload.setPresent(false);
-                }
-                if (!context.experiencerIsPatient) {
-                    payload.setPatientIsSubject(false);
-                }
-                if (context.isNegationTerminal || context.isNegationTrigger) {
-                    payload.setNegationTrigger(true);
-                }
-                if (context.isPossibleTerminal || context.isPossibleTrigger || context.isHypotheticalTerminal || context.isHypotheticalTrigger) {
-                    payload.setAssertionTrigger(true);
-                }
-                if (context.isHistoricalTerminal || context.isHistoricalTrigger) {
-                    payload.setHistoricalTrigger(true);
-                }
-                if (context.isExperiencerTerminal || context.isExperiencerTrigger) {
-                    payload.setExperiencerTrigger(true);
-                }
-            }
-            if (ElasticsearchNLPPlugin.CONFIG.enableEmbeddings()) {
 
+        // Iterate through tokens to generate token/payload pairs.
+        for (Span sentence : actualSentences) {
+            for (Span token : tokenizer.tokenizePos(document.substring(sentence.getStart(), sentence.getEnd()))) {
+                NLPPayload payload = new NLPPayload();
+                if (ElasticsearchNLPPlugin.CONFIG.enableConTextSupport()) {
+                    ConTexTStatus context = documentContexts[token.getStart() + sentence.getStart()];
+                    if (!context.isPositive) {
+                        payload.setPositive(false);
+                    }
+                    if (!context.isAsserted) {
+                        payload.setAsserted(false);
+                    }
+                    if (!context.isPresent) {
+                        payload.setPresent(false);
+                    }
+                    if (!context.experiencerIsPatient) {
+                        payload.setPatientIsSubject(false);
+                    }
+                    if (context.isNegationTerminal || context.isNegationTrigger) {
+                        payload.setNegationTrigger(true);
+                    }
+                    if (context.isPossibleTerminal || context.isPossibleTrigger || context.isHypotheticalTerminal || context.isHypotheticalTrigger) {
+                        payload.setAssertionTrigger(true);
+                    }
+                    if (context.isHistoricalTerminal || context.isHistoricalTrigger) {
+                        payload.setHistoricalTrigger(true);
+                    }
+                    if (context.isExperiencerTerminal || context.isExperiencerTrigger) {
+                        payload.setExperiencerTrigger(true);
+                    }
+                }
+//                if (ElasticsearchNLPPlugin.CONFIG.enableEmbeddings()) {
+//                    payload.setEmbeddings(embeddings.removeFirst());
+//                }
+                ret.addLast(new TokenPayloadPair(token, payload));
             }
-            ret.addLast(new TokenPayloadPair(token, payload));
         }
         return ret;
     }
 
-    // Public for tests
+//    // Converts to BERT tokenization indices
+//    public HashMap<String, LinkedList<Integer>> originalTokensToBertIndex(String[] originalTokens) {
+//        HashMap<String, LinkedList<Integer>> mappings = new HashMap<>();
+//        // Keep track of bert offsets compared to base tokens
+//        int bertOffset = 0;
+//        // BERT tokens always start with a CLS, so append 1
+//        bertOffset += 1;
+//        for (String origToken : originalTokens) {
+//            mappings.computeIfAbsent(origToken, k -> new LinkedList<>()).addLast(bertOffset);
+//            // Increase the token queue by the size of the number of tokens bert produces
+//            bertOffset += bertTokenizer.tokenize(origToken).length;
+//        }
+//        // BERT tokens always end with a SEP but we don't care about its effect on offsets, leave here anyways
+//        // for documentation
+//        return mappings;
+//    }
 
     /**
      * Iterates through triggersByPriority in reverse order in descending priorities while disallowing overwrites
@@ -313,7 +344,7 @@ public final class NLPTokenizer extends Tokenizer {
                 }
             }
         }
-        // - Traverse left to right TODO better algorithm for traversal
+        // - Traverse left to right
         List<ConTexTTrigger> preTriggers = triggers.getOrDefault(ConTexTTrigger.TriggerType.START_RIGHT, Collections.emptyList());
         for (ConTexTTrigger trigger : preTriggers) {
             // Skip pseudos

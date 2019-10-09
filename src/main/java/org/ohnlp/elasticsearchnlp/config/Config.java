@@ -25,7 +25,6 @@ package org.ohnlp.elasticsearchnlp.config;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.ohnlp.elasticsearchnlp.config.components.ConTextConfig;
-import org.ohnlp.elasticsearchnlp.config.components.EmbeddingsConfig;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -66,20 +65,20 @@ public class Config {
         return this.enabled.contains(NLPComponent.CLINICAL_STOP_WORDS);
     }
 
-    @JsonIgnore
-    public boolean enableEmbeddings() {
-        return this.enabled.contains(NLPComponent.EMBEDDINGS);
-    }
+//    @JsonIgnore
+//    public boolean enableEmbeddings() {
+//        return this.enabled.contains(NLPComponent.EMBEDDINGS);
+//    }
 
     public enum NLPComponent {
         CLINICAL_STOP_WORDS,
-        CONTEXT,
-        EMBEDDINGS
+        CONTEXT
+//        EMBEDDINGS
     }
 
     public static class ComponentSettings {
         private ConTextConfig context;
-        private EmbeddingsConfig embeddings;
+//        private EmbeddingsConfig embeddings;
 
         public ComponentSettings() {}
 
@@ -91,12 +90,12 @@ public class Config {
             this.context = context;
         }
 
-        public EmbeddingsConfig getEmbeddings() {
-            return embeddings;
-        }
-
-        public void setEmbeddings(EmbeddingsConfig embeddings) {
-            this.embeddings = embeddings;
-        }
+//        public EmbeddingsConfig getEmbeddings() {
+//            return embeddings;
+//        }
+//
+//        public void setEmbeddings(EmbeddingsConfig embeddings) {
+//            this.embeddings = embeddings;
+//        }
     }
 }

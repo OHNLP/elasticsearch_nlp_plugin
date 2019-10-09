@@ -51,7 +51,7 @@ public class ElasticsearchNLPPluginQueryTest extends ESIntegTestCase {
     @Before
     public void setupIndices() {
         DOCUMENTS = new HashMap<>();
-        DOCUMENTS.put("1", "Mr. Test presents today with heartburn, possible GERD, but no evident symptoms");
+        DOCUMENTS.put("1", "Mr. Test presents today with heartburn, possible GERD");
         DOCUMENTS.put("2", "Mr. Test presents today without heartburn, but with very evident symptoms of GERD");
         DOCUMENTS.put("3", "Mr. Test presents today with GERD and his family history includes heartburn.");
         prepareCreate("nlp")
@@ -75,8 +75,7 @@ public class ElasticsearchNLPPluginQueryTest extends ESIntegTestCase {
         Assert.assertNotNull(ElasticsearchNLPPlugin.CONFIG);
         Assert.assertThat(new HashSet<>(ElasticsearchNLPPlugin.CONFIG.getEnabled()), Matchers.is(new HashSet<>(Arrays.asList(
                 Config.NLPComponent.CLINICAL_STOP_WORDS,
-                Config.NLPComponent.CONTEXT,
-                Config.NLPComponent.EMBEDDINGS
+                Config.NLPComponent.CONTEXT
         ))));
     }
 
