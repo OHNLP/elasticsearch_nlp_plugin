@@ -21,7 +21,7 @@
 //   limitations under the License. 
 //
 // JW added start
-regex:\?( \w+)?~|~pre~|~poss~|~1
+regex:(^|\s)\?(?=\s?\w+)~|~pre~|~poss~|~1
 does not demonstrate~|~pre~|~neg~|~1
 did not demonstrate~|~pre~|~neg~|~1
 do not demonstrate~|~pre~|~neg~|~1
@@ -30,10 +30,56 @@ complications include~|~pre~|~hypo~|~1
 complications include,~|~pre~|~hypo~|~1
 given some brief thought to~|~pre~|~poss~|~1
 never been high enough to cause~|~pre~|~poss~|~1
+regex:\bno (\S+\s+){1,3}(to|that) suggests?\b~|~pre~|~neg~|~2
 // AW added start
+options for~|~pre~|~hypo~|~1
+regex:;~|~termin~|~neg~|~1
+regex:;~|~termin~|~poss~|~1
+regex:;~|~termin~|~exp~|~1
+which demonstrates~|~termin~|~hypo~|~1
+interested in~|~pre~|~poss~|~1
+etiology indeterminate~|~pseudo~|~poss~|~1
+patient and family~|~pseudo~|~exp~|~1
+patient and his husband~|~pseudo~|~exp~|~1
+patient and her husband~|~pseudo~|~exp~|~1
+patient and his wife~|~pseudo~|~exp~|~1
+patient and her wife~|~pseudo~|~exp~|~1
+patient and his family~|~pseudo~|~exp~|~1
+patient and her family~|~pseudo~|~exp~|~1
+patient and husband~|~pseudo~|~exp~|~1
+patient and wife~|~pseudo~|~exp~|~1
+family in the room~|~pseudo~|~exp~|~1
+regex:(query|alternative)(?=\s(\S+\s+){1,3}(versus|vs|given))~|~pre~|~poss~|~1
+does not suggest~|~pre~|~neg~|~2
+do not suggest~|~pre~|~neg~|~2
+did not suggest~|~pre~|~neg~|~2
+not suggest~|~pseudo~|~poss~|~1
+investigated for~|~pre~|~poss~|~1
+investigating for~|~pre~|~poss~|~1
+investigate for~|~pre~|~poss~|~1
+regex:\bnot? (\S+\s+){1,5}due\b~|~pseudo~|~neg~|~1
+no overt~|~pre~|~poss~|~2
+likely due to~|~post~|~poss~|~1
+resolution of~|~pre~|~neg~|~1
+no progression of the~|~pseudo~|~neg~|~1
+because~|~termin~|~neg~|~1
+consideration given history~|~post~|~hypo~|~1
+considered given history~|~post~|~hypo~|~1
+consideration given history~|~pre~|~hist~|~1
+considered given history~|~pre~|~hist~|~1
+patient had~|~termin~|~neg~|~1
+patient had~|~pre~|~hist~|~1
+was diagnosed~|~termin~|~neg~|~1
+was diagnosed~|~pre~|~hist~|~1
+regex:;\b~|~termin~|~neg~|~1
+from~|~termin~|~poss~|~1
+from~|~termin~|~neg~|~1
+maybe~|~pre~|~poss~|~1
+no date~|~pseudo~|~neg~|~1
+no date:~|~pseudo~|~neg~|~1
 not limited~|~pseudo~|~neg~|~1
-regex:\bfamily history\s*$~|~post~|~exp~|~2
-regex:\bfamily history\s*$~|~post~|~hist~|~2
+regex:\bfamily history\s*($|;)~|~post~|~exp~|~2
+regex:\bfamily history\s*($|;)~|~post~|~hist~|~2
 didn't have~|~pre~|~neg~|~1
 don't have~|~pre~|~neg~|~1
 never used~|~pre~|~neg~|~1
@@ -44,6 +90,8 @@ symptomatology~|~post~|~poss~|~1
 pmhx~|~pre~|~hist~|~1
 fmhx~|~pre~|~hist~|~1
 fmhx~|~pre~|~exp~|~1
+fhx~|~pre~|~hist~|~1
+fhx~|~pre~|~exp~|~1
 family history~|~pre~|~exp~|~1
 family history~|~pre~|~hist~|~1
 family member~|~pre~|~exp~|~1
@@ -52,14 +100,12 @@ likely success~|~pseudo~|~poss~|~1
 likely failure~|~pseudo~|~poss~|~1
 cousin~|~pre~|~exp~|~1
 cousins~|~pre~|~exp~|~1
-regex:\basymptomatic\s*$~|~post~|~poss~|~2
 // AW added end
 //KER added start
 trace~|~pre~|~poss~|~1
 prn~|~pre~|~hypo~|~1
 possible~|~pre~|~hypo~|~1
 potential~|~pre~|~poss~|~1
-mild~|~pre~|~poss~|~1
 will be considered~|~post~|~hypo~|~1
 would be considered~|~post~|~hypo~|~1
 should be considered~|~post~|~hypo~|~1
@@ -75,6 +121,8 @@ plans for~|~pre~|~hypo~|~1
 plan for~|~pre~|~hypo~|~1
 plans are~|~pre~|~hypo~|~1
 candidate for~|~pre~|~hypo~|~1
+not a candidate for~|~pre~|~neg~|~2
+not be a candidate for~|~pre~|~neg~|~2
 put off~|~pre~|~hypo~|~1
  vs ~|~pre~|~hypo~|~1
 discuss~|~pre~|~hypo~|~1
@@ -286,11 +334,8 @@ is negative~|~post~|~neg~|~1
 was possible~|~post~|~poss~|~1
 was probable~|~post~|~poss~|~1
 was negative~|~post~|~neg~|~1
-regex::no(?:$|[,.!?])~|~post~|~neg~|~2
-regex:: no(?:$|[,.!?])~|~post~|~neg~|~2
-regex::none(?:$|[,.!?])~|~post~|~neg~|~2
-regex:: none(?:$|[,.!?])~|~post~|~neg~|~2
-asymptomatic~|~pre~|~poss~|~1
+regex::\s*no\s*(?:$|[,.!?])~|~post~|~neg~|~2
+regex::\s*none\s*(?:$|[,.!?])~|~post~|~neg~|~2
 //Hongfang added end
 absence of~|~pre~|~neg~|~1
 absence for~|~pre~|~neg~|~1
@@ -365,6 +410,7 @@ as the source of~|~termin~|~neg~|~1
 as well as any~|~pre~|~neg~|~1
 aside from~|~termin~|~neg~|~1
 aunt~|~pre~|~exp~|~1
+aunt:~|~pre~|~exp~|~1
 aunts~|~pre~|~exp~|~1
 aunt's~|~pre~|~exp~|~1
 be ruled out~|~post~|~poss~|~1
@@ -372,6 +418,7 @@ be ruled out for~|~pre~|~poss~|~1
 because~|~termin~|~hypo~|~1
 being ruled out~|~post~|~poss~|~1
 brother~|~pre~|~exp~|~1
+brother:~|~pre~|~exp~|~1
 brother's~|~pre~|~exp~|~1
 brothers~|~pre~|~exp~|~1
 but~|~termin~|~neg~|~1
@@ -390,6 +437,7 @@ can rule the patient out~|~pre~|~neg~|~1
 can rule the patinet out against~|~pre~|~neg~|~1
 can rule the patinet out for~|~pre~|~neg~|~1
 cannot~|~pre~|~neg~|~1
+cannot exclude~|~pre~|~poss~|~2
 cause for~|~termin~|~neg~|~1
 cause of~|~termin~|~neg~|~1
 causes for~|~termin~|~neg~|~1
@@ -404,6 +452,7 @@ could be ruled out~|~post~|~poss~|~1
 could be ruled out for~|~pre~|~poss~|~1
 currently~|~termin~|~histexp~|~1
 dad~|~pre~|~exp~|~1
+dad:~|~pre~|~exp~|~1
 dad's~|~pre~|~exp~|~1
 declined~|~pre~|~neg~|~1
 declines~|~pre~|~neg~|~1
@@ -429,19 +478,24 @@ emergency department~|~termin~|~hist~|~1
 etiology for~|~termin~|~neg~|~1
 etiology of~|~termin~|~neg~|~1
 evaluate for~|~pre~|~neg~|~1
+evaluation for~|~pre~|~neg~|~1
 except~|~termin~|~neg~|~1
 fails to reveal~|~pre~|~neg~|~1
 family~|~pre~|~exp~|~1
 fam hx~|~pre~|~exp~|~1
+fam hx:~|~pre~|~exp~|~1
 father~|~pre~|~exp~|~1
+father:~|~pre~|~exp~|~1
 father's~|~pre~|~exp~|~1
 free~|~post~|~neg~|~1
 free of~|~pre~|~neg~|~1
 gram negative~|~pseudo~|~neg~|~1
 grandfather~|~pre~|~exp~|~1
 grandfather's~|~pre~|~exp~|~1
+grandfather:~|~pre~|~exp~|~1
 grandmother~|~pre~|~exp~|~1
 grandmother's~|~pre~|~exp~|~1
+grandmother:~|~pre~|~exp~|~1
 has been negative~|~post~|~neg~|~1
 has been ruled out~|~post~|~neg~|~1
 have been ruled out~|~post~|~neg~|~1
@@ -490,8 +544,10 @@ discussed~|~pre~|~poss~|~1
 might be ruled out~|~post~|~poss~|~1
 might be ruled out for~|~pre~|~poss~|~1
 mom~|~pre~|~exp~|~1
+mom:~|~pre~|~exp~|~1
 mom's~|~pre~|~exp~|~1
 mother~|~pre~|~exp~|~1
+mother:~|~pre~|~exp~|~1
 mother's~|~pre~|~exp~|~1
 must be ruled out~|~post~|~poss~|~1
 must be ruled out for~|~pre~|~poss~|~1
@@ -556,7 +612,7 @@ not reveal~|~pre~|~neg~|~1
 not ruled out~|~post~|~poss~|~1
 not see~|~pre~|~neg~|~1
 not to be~|~pre~|~neg~|~1
-nothing to suggest~|~pre~|~neg~|~1
+nothing to suggest~|~pre~|~neg~|~2
 noted~|~termin~|~histexp~|~1
 now resolved~|~post~|~neg~|~1
 origin for~|~termin~|~neg~|~1
@@ -588,6 +644,7 @@ reasons of~|~termin~|~neg~|~1
 reported~|~termin~|~histexp~|~1
 reports~|~termin~|~histexp~|~1
 resolved~|~pre~|~neg~|~1
+resolved after~|~post~|~neg~|~2
 return~|~pre~|~hypo~|~1
 ro~|~pre~|~neg~|~1
 rule her out~|~pre~|~neg~|~1
@@ -656,6 +713,7 @@ to exclude~|~pre~|~neg~|~1
 today~|~termin~|~histexp~|~1
 trigger event for~|~termin~|~neg~|~1
 uncle~|~pre~|~exp~|~1
+uncle:~|~pre~|~exp~|~1
 uncle's~|~pre~|~exp~|~1
 unlikely~|~post~|~neg~|~1
 unremarkable for~|~pre~|~neg~|~1

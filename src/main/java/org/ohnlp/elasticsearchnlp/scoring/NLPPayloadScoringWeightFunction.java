@@ -30,10 +30,12 @@ import org.apache.lucene.search.Explanation;
 import org.apache.lucene.util.BytesRef;
 
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class NLPPayloadScoringWeightFunction {
 
-    private static boolean initialized = false;
+    private static final AtomicBoolean INIT_LCK = new AtomicBoolean(false);
+    private static final AtomicBoolean DOINIT_LCK = new AtomicBoolean(false);
 
     private static double mismatch_neg;
     private static double mismatch_temp_light;
@@ -58,8 +60,21 @@ public class NLPPayloadScoringWeightFunction {
     public static double getScoreMultiplier(BytesRef queryPyldByteRef, BytesRef idxPyldByteRef) {
         // Ensure plugin initialized before loading config. We are guaranteed this method is not run prior to full config
         // init
-        if (!initialized) {
-            initializeWeights();
+        if (!INIT_LCK.get()) {
+            // Not initialized, try to acquire lock for initialization
+            if (!DOINIT_LCK.getAndSet(true)) {
+                initializeWeights();
+            } else {
+                synchronized (INIT_LCK) {
+                    while (!INIT_LCK.get()) {
+                        try {
+                            INIT_LCK.wait(1000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
         }
         // Load bytesref into java POJO
         NLPPayload queryPyld = new NLPPayload(queryPyldByteRef);
@@ -92,37 +107,7 @@ public class NLPPayloadScoringWeightFunction {
                 ret *= queryPyld.isAsserted() ? match_assert_light : match_assert_heavy;
             }
         }
-        if (ElasticsearchNLPPlugin.CONFIG.enableEmbeddings()) {
-            double scoreWeight = ElasticsearchNLPPlugin.CONFIG.getSettings().getEmbeddings().getScore_weight();
-            float[] queryEmbs = queryPyld.getEmbeddings();
-            float[] indexEmbs = idxPyld.getEmbeddings();
-            double sim = cosSim(queryEmbs, indexEmbs);
-            ret = (ret * (1 - scoreWeight)) + (sim * scoreWeight);
-        }
         return ret;
-    }
-
-    /**
-     * Calculates the cosine similarity between arg1 and arg2
-     * @param arg1 vector 1
-     * @param arg2 vector 2
-     * @return The cosine similarity
-     * @throws IllegalArgumentException if arg1.length != arg2.length
-     */
-    private static double cosSim(float[] arg1, float[] arg2) {
-        if (arg1.length != arg2.length) {
-            throw new IllegalArgumentException("Embeddings dimensions differ! Arg 1 embeddings length: " + arg1.length
-                    + " Arg 2 embeddings length: " + arg2.length);
-        }
-        double dot = 0.0;
-        double norm1 = 0.0;
-        double norm2 = 0.0;
-        for (int i = 0; i < arg1.length; i++) {
-            dot += arg1[i] * arg2[i];
-            norm1 += Math.pow(arg1[i], 2);
-            norm2 += Math.pow(arg2[i], 2);
-        }
-        return dot / (Math.sqrt(norm1) * Math.sqrt(norm2));
     }
 
     private static void initializeWeights() {
@@ -143,6 +128,11 @@ public class NLPPayloadScoringWeightFunction {
         match_temp_light = match.getTemporal().getLight();
         match_temp_heavy = match.getTemporal().getHeavy();
         match_subj = match.getSubject();
+
+        INIT_LCK.set(true);
+        synchronized (INIT_LCK) {
+            INIT_LCK.notifyAll();
+        }
     }
 
     /**
