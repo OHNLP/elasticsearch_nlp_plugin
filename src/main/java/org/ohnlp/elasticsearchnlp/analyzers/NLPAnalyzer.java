@@ -31,7 +31,7 @@ public class NLPAnalyzer extends Analyzer {
     // Denotes the analysis pipeline to use for a given field
     protected TokenStreamComponents createComponents(final String fieldName) {
         // First add ConText payloads and perform tokenization
-        Tokenizer tokens = new ConTexTAwareTokenizer();
+        Tokenizer tokens = new NLPTokenizer();
         TokenStream pipeline = new LowerCaseFilter(tokens);
         pipeline = new StopFilter(pipeline, EnglishAnalyzer.ENGLISH_STOP_WORDS_SET);
         if (ElasticsearchNLPPlugin.CONFIG.enableClinicalStopwords()) {

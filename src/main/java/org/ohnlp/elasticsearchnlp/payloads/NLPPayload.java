@@ -24,25 +24,29 @@
 package org.ohnlp.elasticsearchnlp.payloads;
 
 import org.apache.lucene.util.BytesRef;
+import org.ohnlp.elasticsearchnlp.ElasticsearchNLPPlugin;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 import java.util.Arrays;
 
 /**
- * A representation of NLP artifact data with translation to ES payload format (byte arrays represented as a sequence
- * of integers)
- *
+ * A representation of NLP artifact data with translation to ES payload (byte arrays) format<br/>
+ * This object utilizes Java's {@link ByteBuffer} for encoding, and is set to {@link ByteOrder#LITTLE_ENDIAN} for
+ * consistency.
  * <br/>
  * <h2>Byte Format Information</h2>
  * <h3>Byte 0: ConText information</h3>
  * b & 0x1 = 0 -> Positive, 1 -> Negated<br/>
  * b & 0x2 = 0 -> Asserted, 1 -> Possible<br/>
  * b & 0x4 = 0 -> Present, 1 -> Historical<br/>
- * b & 0x8 = 0 -> Patient is Subject, 1 -> Other is Subject<br/>
- * <h3>Byte 1: Trigger information</h3>
+ * b & 0x8 = 0 -> Patient is Subject, 1 -> Other is Subject<br/><br/>
+ * <h3>Byte 1: ConText Trigger information</h3>
  * b & 0x1 = 0 -> Not Negation Trigger, 1 -> Negation Trigger<br/>
  * b & 0x2 = 0 -> Not Assertion Trigger, 1 -> Assertion Trigger<br/>
  * b & 0x4 = 0 -> Not Historical Trigger, 1 -> Historical Trigger<br/>
- * b & 0x8 = 0 -> Not Experiencer Trigger, 1 -> Experiencer Trigger<br/>
+ * b & 0x8 = 0 -> Not Experiencer Trigger, 1 -> Experiencer Trigger<br/><br/>
  */
 public class NLPPayload {
     //  Byte 0: ConText information
@@ -57,78 +61,85 @@ public class NLPPayload {
     public boolean isHistoricalTrigger;
     public boolean isExperiencerTrigger;
 
+    private static final byte[] DEFAULT_PARAMS = new byte[2];
+
+
+    static {
+        Arrays.fill(DEFAULT_PARAMS, (byte) 0);
+    }
+
     public NLPPayload() {
-        this(new byte[] {0b0, 0b0});
+        this(DEFAULT_PARAMS);
     }
 
     public NLPPayload(BytesRef bytes) {
-        int start = bytes.offset;
-        byte[] source = bytes.bytes;
-        // Status
-        isPositive = (source[start] & 0x1) == 0;
-        isAsserted = (source[start] & 0x2) == 0;
-        isPresent = (source[start] & 0x4) == 0;
-        patientIsSubject = (source[start] & 0x8) == 0;
-        // Triggers (for coordination)
-        if (source[start + 1] == 0) {
-            return;
-        }
-        isNegationTrigger = (source[start + 1] & 0x1) == 1;
-        isAssertionTrigger = (source[start + 1] & 0x2) == 0x2;
-        isHistoricalTrigger = (source[start + 1] & 0x4) == 0x4;
-        isExperiencerTrigger = (source[start + 1] & 0x8) == 0x8;
+        this(ByteBuffer.wrap(bytes.bytes).order(ByteOrder.LITTLE_ENDIAN), bytes.offset);
     }
 
     public NLPPayload(byte[] source) {
+        this(ByteBuffer.wrap(source).order(ByteOrder.LITTLE_ENDIAN), 0);
+    }
+
+    public NLPPayload(ByteBuffer buff, int offset) {
         // Status
-        isPositive = (source[0] & 0x1) == 0;
-        isAsserted = (source[0] & 0x2) == 0;
-        isPresent = (source[0] & 0x4) == 0;
-        patientIsSubject = (source[0] & 0x8) == 0;
+        byte contextByte = buff.get(offset);
+        isPositive = (contextByte & 0x1) == 0;
+        isAsserted = (contextByte & 0x2) == 0;
+        isPresent = (contextByte & 0x4) == 0;
+        patientIsSubject = (contextByte & 0x8) == 0;
         // Triggers (for coordination)
-        isNegationTrigger = (source[1] & 0x1) == 1;
-        isAssertionTrigger = (source[1] & 0x2) == 0x2;
-        isHistoricalTrigger = (source[1] & 0x4) == 0x4;
-        isExperiencerTrigger = (source[1] & 0x8) == 0x8;
+        byte triggerByte = buff.get(offset + 1);
+        isNegationTrigger = (triggerByte & 0x1) == 1;
+        isAssertionTrigger = (triggerByte & 0x2) == 0x2;
+        isHistoricalTrigger = (triggerByte & 0x4) == 0x4;
+        isExperiencerTrigger = (triggerByte & 0x8) == 0x8;
     }
 
     /**
      * @return A byte array with the specifications as detailed in the class javadoc
      */
     public byte[] toBytes() {
-        byte[] ret = new byte[2];
+//        ByteBuffer buff = ByteBuffer.allocate(3 + embeddings.length * EMBEDDING_BYTE_SIZE).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer buff = ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN);
         // ConText Byte
+        byte conTextByte = 0b0;
         if (!isPositive) {
-            ret[0] = (byte) (ret[0] | 0x1);
+            conTextByte = (byte) (conTextByte | 0x1);
         }
         if (!isAsserted) {
-            ret[0] = (byte) (ret[0] | 0x2);
+            conTextByte = (byte) (conTextByte | 0x2);
         }
         if (!isPresent) {
-            ret[0] = (byte) (ret[0] | 0x4);
+            conTextByte = (byte) (conTextByte | 0x4);
         }
         if (!patientIsSubject) {
-            ret[0] = (byte) (ret[0] | 0x8);
+            conTextByte = (byte) (conTextByte | 0x8);
         }
+        buff.put(0, conTextByte);
         // Trigger States
+        byte triggerByte = 0b0;
         if (isNegationTrigger) {
-            ret[1] = (byte) (ret[1] | 0x1);
+            triggerByte = (byte) (triggerByte | 0x1);
         }
         if (isAssertionTrigger) {
-            ret[1] = (byte) (ret[1] | 0x2);
+            triggerByte = (byte) (triggerByte | 0x2);
         }
         if (isHistoricalTrigger) {
-            ret[1] = (byte) (ret[1] | 0x4);
+            triggerByte = (byte) (triggerByte | 0x4);
         }
         if (isExperiencerTrigger) {
-            ret[1] = (byte) (ret[1] | 0x8);
+            triggerByte = (byte) (triggerByte | 0x8);
         }
+        buff.put(1, triggerByte);
+        byte[] ret = new byte[2];
+        buff.get(ret);
         return ret;
     }
 
     /**
      * Determines if the term to which this payload corresponds should be used as part of the query coordination step
      * of scoring
+     *
      * @return True if payload is not a negation, assertion, or historical trigger (note that it can be an experiencer
      * trigger, as the specific subject may be relevant to the query)
      */
@@ -205,7 +216,11 @@ public class NLPPayload {
         isExperiencerTrigger = experiencerTrigger;
     }
 
-    @Override public String toString() {
-        return "[negated:" + !isPositive + "; asserted:" + isAsserted + "; historical:" + !isPresent + "; experiencer: " + (patientIsSubject ? "patient" : "other") + "]";
+    @Override
+    public String toString() {
+        return "[negated:" + !isPositive
+                + "; asserted:" + isAsserted
+                + "; historical:" + !isPresent
+                + "; experiencer: " + (patientIsSubject ? "patient" : "other");
     }
 }

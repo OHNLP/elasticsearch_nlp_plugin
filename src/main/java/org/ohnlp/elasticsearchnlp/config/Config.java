@@ -65,13 +65,20 @@ public class Config {
         return this.enabled.contains(NLPComponent.CLINICAL_STOP_WORDS);
     }
 
+//    @JsonIgnore
+//    public boolean enableEmbeddings() {
+//        return this.enabled.contains(NLPComponent.EMBEDDINGS);
+//    }
+
     public enum NLPComponent {
         CLINICAL_STOP_WORDS,
         CONTEXT
+//        EMBEDDINGS
     }
 
     public static class ComponentSettings {
         private ConTextConfig context;
+//        private EmbeddingsConfig embeddings;
 
         public ComponentSettings() {}
 
@@ -82,5 +89,13 @@ public class Config {
         public void setContext(ConTextConfig context) {
             this.context = context;
         }
+
+//        public EmbeddingsConfig getEmbeddings() {
+//            return embeddings;
+//        }
+//
+//        public void setEmbeddings(EmbeddingsConfig embeddings) {
+//            this.embeddings = embeddings;
+//        }
     }
 }

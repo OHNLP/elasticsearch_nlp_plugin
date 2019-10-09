@@ -50,16 +50,17 @@ import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 
 /**
- * Annotates input text with {@link NLPPayload} payloads if not present and populates
- * negation, certainty, and temporality into said payload.
+ * <p>Annotates input text with {@link NLPPayload} payloads if not present.</p>
  * <p>
- * Generally speaking, this is done via the following using a UIMA-backed MedTagger pipeline:
- * 1. Sentence Boundary Detection
- * 2. Tokenization
- * 3. Annotation of tokens using contextual information
- * 4. Aggregation of tokens throughout the document in order
+ * Generally speaking, this is done via the following sequence of events:
+ * <ol>
+ * <li>Sentence Boundary Detection</li>
+ * <li>Tokenization and Annotation of Tokens using Contextual Annotation</li>
+ * <li>Aggregation of all tokens in the document, in-order</li>
+ * </ol>
+ * </p>
  */
-public final class ConTexTAwareTokenizer extends Tokenizer {
+public final class NLPTokenizer extends Tokenizer {
 
     private static final int[] RULE_PRIORITIES = {1, 2}; // TODO more robust solution that scans files
 
@@ -80,7 +81,7 @@ public final class ConTexTAwareTokenizer extends Tokenizer {
     private static final int MAX_WIN_SIZE = -1;
 
     // Starts a new UIMA pipeline on initialization
-    public ConTexTAwareTokenizer() {
+    public NLPTokenizer() {
         try {
             initNLPComponents();
             for (int i : RULE_PRIORITIES) {
@@ -97,9 +98,9 @@ public final class ConTexTAwareTokenizer extends Tokenizer {
     }
 
     private void initNLPComponents() throws IOException {
-        TokenizerModel tokModel = new TokenizerModel(ConTexTAwareTokenizer.class.getResourceAsStream("/models/en-token.bin"));
+        TokenizerModel tokModel = new TokenizerModel(NLPTokenizer.class.getResourceAsStream("/models/en-token.bin"));
         tokenizer = new TokenizerME(tokModel);
-        SentenceModel sentModel = new SentenceModel(ConTexTAwareTokenizer.class.getResourceAsStream("/models/en-sent.bin"));
+        SentenceModel sentModel = new SentenceModel(NLPTokenizer.class.getResourceAsStream("/models/en-sent.bin"));
         sentenceDetector = new SentenceDetectorME(sentModel);
     }
 
@@ -141,7 +142,7 @@ public final class ConTexTAwareTokenizer extends Tokenizer {
     }
 
     /**
-     * Resets the tokenizer with a given input and annotates ConText information
+     * Resets the tokenizer with a given input and performs all NLP tasks
      *
      * @throws IOException if errors occur during NLP
      */
@@ -156,10 +157,9 @@ public final class ConTexTAwareTokenizer extends Tokenizer {
     }
 
     /**
-     * Runs Token-Level NLP components for creating {@link NLPPayload} objects
-     *
-     * Currently this consists of determining ConText statuses for every BaseToken in the input text
-     * and returning as a sequential list of token, NLPPayload pairs
+     * Determines ConText status for every BaseToken in the input text and returns as
+     * a sequential list of context statuses and the associated embedding for each sentence that contains it
+     * {@link ConTexTStatus} objects
      */
     private Deque<TokenPayloadPair> createNLPPayloads() {
         Deque<TokenPayloadPair> ret = new LinkedList<>();
@@ -167,58 +167,62 @@ public final class ConTexTAwareTokenizer extends Tokenizer {
         for (int i = 0; i < documentContexts.length; i++) {
             documentContexts[i] = new ConTexTStatus();
         }
-        // Populate ConTexts by sentence if enabled
-        if (ElasticsearchNLPPlugin.CONFIG.enableConTextSupport()) {
-            for (Span sentence : sentenceDetector.sentPosDetect(document)) {
-                // TODO: not really efficient, better to just directly put into the destination array instead of copying
-                String text = document.substring(sentence.getStart(), sentence.getEnd());
-                int start = sentence.getStart() - 1; // Offset the lack of starting \n for next
-                for (String subText : text.split("\n")) {
-                    start++; // Factor in the \n
+        List<Span> actualSentences = new LinkedList<>(); // We do further subsplitting so save for later use
+        // Populate ConTexts  by sentence if enabled
+        for (Span sentence : sentenceDetector.sentPosDetect(document)) {
+            // TODO: not really efficient, better to just directly put into the destination array instead of copying
+            String text = document.substring(sentence.getStart(), sentence.getEnd());
+            int start = sentence.getStart() - 1; // Offset the lack of starting \n for next
+            for (String subText : text.split("\n")) {
+                start++; // Factor in the \n
+                if (ElasticsearchNLPPlugin.CONFIG.enableConTextSupport()) {
                     Deque<Map<ConTexTTrigger.TriggerType, List<ConTexTTrigger>>> triggersByPriority = getTriggers(subText);
                     Map<ConTexTTrigger.TriggerType, List<ConTexTTrigger>> triggers = flattenByPriority(triggersByPriority);
                     // Annotate and copy context statuses to the document contexts
                     System.arraycopy(annotateConTextStatuses(triggers, subText), 0, documentContexts, start, subText.length());
+                    actualSentences.add(new Span(start, start + subText.length()));
                     start += subText.length();
                 }
             }
         }
+
+
         // Iterate through tokens to generate token/payload pairs.
-        for (Span token : tokenizer.tokenizePos(document)) {
-            NLPPayload payload = new NLPPayload();
-            if (ElasticsearchNLPPlugin.CONFIG.enableConTextSupport()) {
-                ConTexTStatus context = documentContexts[token.getStart()]; // TODO: more comprehensive check than first character collision
-                if (!context.isPositive) {
-                    payload.setPositive(false);
+        for (Span sentence : actualSentences) {
+            for (Span token : tokenizer.tokenizePos(document.substring(sentence.getStart(), sentence.getEnd()))) {
+                NLPPayload payload = new NLPPayload();
+                if (ElasticsearchNLPPlugin.CONFIG.enableConTextSupport()) {
+                    ConTexTStatus context = documentContexts[token.getStart() + sentence.getStart()];
+                    if (!context.isPositive) {
+                        payload.setPositive(false);
+                    }
+                    if (!context.isAsserted) {
+                        payload.setAsserted(false);
+                    }
+                    if (!context.isPresent) {
+                        payload.setPresent(false);
+                    }
+                    if (!context.experiencerIsPatient) {
+                        payload.setPatientIsSubject(false);
+                    }
+                    if (context.isNegationTerminal || context.isNegationTrigger) {
+                        payload.setNegationTrigger(true);
+                    }
+                    if (context.isPossibleTerminal || context.isPossibleTrigger || context.isHypotheticalTerminal || context.isHypotheticalTrigger) {
+                        payload.setAssertionTrigger(true);
+                    }
+                    if (context.isHistoricalTerminal || context.isHistoricalTrigger) {
+                        payload.setHistoricalTrigger(true);
+                    }
+                    if (context.isExperiencerTerminal || context.isExperiencerTrigger) {
+                        payload.setExperiencerTrigger(true);
+                    }
                 }
-                if (!context.isAsserted) {
-                    payload.setAsserted(false);
-                }
-                if (!context.isPresent) {
-                    payload.setPresent(false);
-                }
-                if (!context.experiencerIsPatient) {
-                    payload.setPatientIsSubject(false);
-                }
-                if (context.isNegationTerminal || context.isNegationTrigger) {
-                    payload.setNegationTrigger(true);
-                }
-                if (context.isPossibleTerminal || context.isPossibleTrigger || context.isHypotheticalTerminal || context.isHypotheticalTrigger) {
-                    payload.setAssertionTrigger(true);
-                }
-                if (context.isHistoricalTerminal || context.isHistoricalTrigger) {
-                    payload.setHistoricalTrigger(true);
-                }
-                if (context.isExperiencerTerminal || context.isExperiencerTrigger) {
-                    payload.setExperiencerTrigger(true);
-                }
+                ret.addLast(new TokenPayloadPair(token, payload));
             }
-            ret.addLast(new TokenPayloadPair(token, payload));
         }
         return ret;
     }
-
-    // Public for tests
 
     /**
      * Iterates through triggersByPriority in reverse order in descending priorities while disallowing overwrites
@@ -293,7 +297,7 @@ public final class ConTexTAwareTokenizer extends Tokenizer {
                 }
             }
         }
-        // - Traverse left to right TODO better algorithm for traversal
+        // - Traverse left to right
         List<ConTexTTrigger> preTriggers = triggers.getOrDefault(ConTexTTrigger.TriggerType.START_RIGHT, Collections.emptyList());
         for (ConTexTTrigger trigger : preTriggers) {
             // Skip pseudos

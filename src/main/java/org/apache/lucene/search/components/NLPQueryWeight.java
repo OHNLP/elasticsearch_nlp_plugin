@@ -32,6 +32,7 @@ import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.BytesRef;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Set;
 
 /**
@@ -39,30 +40,52 @@ import java.util.Set;
  */
 public class NLPQueryWeight extends Weight {
 
+    private final TermStates termStates;
+    private final float boost;
+    private final IndexSearcher searcher;
+    private final ScoreMode scoreMode;
+    private final String field;
+    private final Similarity.SimScorer stats;
     private Term term;
-    private BytesRef pyld;
-    private TermContext termState;
     private Similarity similarity;
-    private Similarity.SimWeight stats;
 
     public NLPQueryWeight(IndexSearcher searcher,
-                          float boost, TermContext termStates, Query srcQry, NLPTerm t) throws IOException {
+                          float boost, ScoreMode scoreMode, TermStates termStates, Query srcQry, NLPTerm t, String field) throws IOException {
         super(srcQry);
         if (termStates == null) {
             throw new IllegalStateException("termStates are required for scores");
         }
+
+        this.searcher = searcher;
         this.term = t.getTerm();
-        this.pyld = t.getPyld();
-        this.termState = termStates;
+        this.field = field;
 
-        this.similarity = new NLPSimilarity(searcher.getSimilarity(true), t);
+        this.similarity = new NLPSimilarity(searcher.getSimilarity(), t);
+        this.termStates = termStates;
+        this.boost = boost;
 
-        final CollectionStatistics collectionStats = searcher.collectionStatistics(term.field());
-        final TermStatistics termStats = searcher.termStatistics(term, termStates);
+        this.scoreMode = scoreMode;
 
+        // Initialize underlying stats - copied from ES
+        final CollectionStatistics collectionStats;
+        final TermStatistics termStats;
+        if (scoreMode.needsScores()) {
+            collectionStats = searcher.collectionStatistics(term.field());
+            termStats = searcher.termStatistics(term, termStates);
+        } else {
+            // we do not need the actual stats, use fake stats with docFreq=maxDoc=ttf=1
+            collectionStats = new CollectionStatistics(term.field(), 1, 1, 1, 1);
+            termStats = new TermStatistics(term.bytes(), 1, 1);
+        }
 
-        this.stats = similarity.computeWeight(boost, collectionStats, termStats);
+        if (termStats == null) {
+            this.stats = null; // term doesn't exist in any segment, we won't use similarity at all
+        } else {
+            this.stats = similarity.scorer(boost, collectionStats, termStats);
+        }
     }
+
+
 
     @Override
     public void extractTerms(Set<Term> terms) {
@@ -75,9 +98,9 @@ public class NLPQueryWeight extends Weight {
         if (scorer != null) {
             int newDoc = scorer.iterator().advance(doc);
             if (newDoc == doc) {
-                float freq = scorer.freq(); // TODO
+                float freq = scorer.freq();
                 Explanation freqExplanation = Explanation.match(freq, "termFreq=" + freq);
-                return scorer.docScorer.explain(doc, freqExplanation);
+                return scorer.docScorer.explain(freqExplanation, scorer.getNormValue(doc));
             }
         }
         return Explanation.noMatch("No matching term");
@@ -85,44 +108,37 @@ public class NLPQueryWeight extends Weight {
 
     @Override
     public Scorer scorer(LeafReaderContext context) throws IOException {
-        assert termState == null || termState.wasBuiltFor(ReaderUtil.getTopLevelContext(context)) : "The top-reader used to create Weight is not the same as the current reader's top-reader (" + ReaderUtil.getTopLevelContext(context);
-        ;
         final TermsEnum termsEnum = getTermsEnum(context);
         if (termsEnum == null) {
             return null;
         }
+        ArrayList<TermStatistics> allTermStats = new ArrayList<>();
+
+        if (scoreMode.needsScores()) {
+            TermStatistics termStatistics = searcher.termStatistics(term, termStates);
+            if (termStatistics != null) {
+                allTermStats.add(termStatistics);
+            }
+        }
         PostingsEnum docs = termsEnum.postings(null, PostingsEnum.ALL);
         assert docs != null;
-        NLPDocScorer simScorer = (NLPDocScorer) similarity.simScorer(stats, context);
-        simScorer.setPostings(docs);
-        return new NLPTermScorer(this, docs, simScorer);
+        ((NLPDocScorer)stats).setPostings(docs);
+        return new NLPTermScorer(this, docs, (NLPDocScorer) stats, context.reader(), field);
     }
 
     // Mostly copied from elasticsearch
     private TermsEnum getTermsEnum(LeafReaderContext context) throws IOException {
-        if (termState != null) {
-            // TermQuery either used as a Query or the term states have been provided at construction time
-            assert termState.wasBuiltFor(ReaderUtil.getTopLevelContext(context)) : "The top-reader used to create Weight is not the same as the current reader's top-reader (" + ReaderUtil.getTopLevelContext(context);
-            final TermState state = termState.get(context.ord);
-            if (state == null) { // term is not present in that reader
-                return null;
-            }
-            final TermsEnum termsEnum = context.reader().terms(term.field()).iterator();
-            termsEnum.seekExact(term.bytes(), state);
-            return termsEnum;
-        } else {
-            // TermQuery used as a filter, so the term states have not been built up front
-            Terms terms = context.reader().terms(term.field());
-            if (terms == null) {
-                return null;
-            }
-            final TermsEnum termsEnum = terms.iterator();
-            if (termsEnum.seekExact(term.bytes())) {
-                return termsEnum;
-            } else {
-                return null;
-            }
+        assert termStates != null;
+        assert termStates.wasBuiltFor(ReaderUtil.getTopLevelContext(context)) :
+                "The top-reader used to create Weight is not the same as the current reader's top-reader (" + ReaderUtil.getTopLevelContext(context);
+        final TermState state = termStates.get(context);
+        if (state == null) { // term is not present in that reader
+            assert context.reader().docFreq(term) == 0 : "no termstate found but term exists in reader term=" + term;
+            return null;
         }
+        final TermsEnum termsEnum = context.reader().terms(term.field()).iterator();
+        termsEnum.seekExact(term.bytes(), state);
+        return termsEnum;
     }
 
     @Override

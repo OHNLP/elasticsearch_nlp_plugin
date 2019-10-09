@@ -40,7 +40,7 @@ import java.util.*;
 /**
  * Loads plugin into an ES cluster and runs individual test cases via queries
  */
-@ESIntegTestCase.ClusterScope(scope = ESIntegTestCase.Scope.SUITE, numDataNodes = 1, numClientNodes = 1)
+@ESIntegTestCase.ClusterScope(scope = ESIntegTestCase.Scope.SUITE, numDataNodes = 1)
 public class ElasticsearchNLPPluginQueryTest extends ESIntegTestCase {
 
     private static Map<String, String> DOCUMENTS;
@@ -51,7 +51,7 @@ public class ElasticsearchNLPPluginQueryTest extends ESIntegTestCase {
     @Before
     public void setupIndices() {
         DOCUMENTS = new HashMap<>();
-        DOCUMENTS.put("1", "Mr. Test presents today with heartburn, possible GERD, but no evident symptoms");
+        DOCUMENTS.put("1", "Mr. Test presents today with heartburn, possible GERD");
         DOCUMENTS.put("2", "Mr. Test presents today without heartburn, but with very evident symptoms of GERD");
         DOCUMENTS.put("3", "Mr. Test presents today with GERD and his family history includes heartburn.");
         prepareCreate("nlp")
@@ -84,11 +84,13 @@ public class ElasticsearchNLPPluginQueryTest extends ESIntegTestCase {
      */
     @Test
     public void verifyContextAwareQueries() {
+        Collection<Config.NLPComponent> existingEnabled = ElasticsearchNLPPlugin.CONFIG.getEnabled();
+        // Evaluate ConText in isolation
+        ElasticsearchNLPPlugin.CONFIG.setEnabled(Arrays.asList(Config.NLPComponent.CONTEXT));
         // Pos w/ FMHX
         client().admin().indices().prepareRefresh("nlp").execute().actionGet();
         SearchResponse resp = cluster().client()
                 .prepareSearch("nlp")
-                .setTypes("text")
                 .setQuery(new NLPNaiveBooleanESQueryBuilder(
                         "body",
                         "has GERD with fmhx heartburn"))
@@ -98,6 +100,8 @@ public class ElasticsearchNLPPluginQueryTest extends ESIntegTestCase {
         Object[] orderedIDs = Arrays.stream(resp.getHits().getHits()).map(SearchHit::getId).toArray();
         Object[] expectedIDs = new Object[]{"3", "2", "1"};
         Assert.assertArrayEquals(expectedIDs, orderedIDs);
+        // Reset enabled
+        ElasticsearchNLPPlugin.CONFIG.setEnabled(existingEnabled);
     }
 
 }

@@ -223,4 +223,3 @@ local.properties
 # Visio autosave temporary files
 *.~vsd*
 
-/referenceMapping.json

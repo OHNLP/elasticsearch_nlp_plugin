@@ -23,16 +23,14 @@
 
 package org.ohnlp.elasticsearchnlp.lucene.similarity;
 
-import org.ohnlp.elasticsearchnlp.lucene.NLPTerm;
 import org.apache.lucene.index.FieldInvertState;
-import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.BytesRef;
-
-import java.io.IOException;
+import org.ohnlp.elasticsearchnlp.lucene.NLPTerm;
 
 /**
  * Wraps any lucene similarity implementation and incorporates NLP payload scoring into the weight
@@ -48,27 +46,14 @@ public class NLPSimilarity extends Similarity {
         this.pyld = term.getPyld();
     }
 
-    public NLPSimilarity(Similarity similarity, Term term, BytesRef pyld) {
-        this.similarity = similarity;
-        this.term = term;
-        this.pyld = pyld;
-    }
-
 
     @Override
     public long computeNorm(FieldInvertState state) {
-        return 0;
+        return similarity.computeNorm(state);
     }
 
     @Override
-    public SimWeight computeWeight(float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
-        SimWeight base = similarity.computeWeight(boost, collectionStats, termStats);
-        return new NLPTermSimWeight(base);
-    }
-
-    @Override
-    public SimScorer simScorer(SimWeight weight, LeafReaderContext context) throws IOException {
-        SimScorer baseScorer = similarity.simScorer(((NLPTermSimWeight)weight).getBase(), context);
-        return new NLPDocScorer(baseScorer, term, pyld, context);
+    public SimScorer scorer(float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+        return new NLPDocScorer(similarity.scorer(boost, collectionStats, termStats), term, pyld);
     }
 }

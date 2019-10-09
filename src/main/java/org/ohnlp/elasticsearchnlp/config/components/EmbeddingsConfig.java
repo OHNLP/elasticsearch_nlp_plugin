@@ -21,21 +21,43 @@
  *  limitations under the License.
  */
 
-package org.ohnlp.elasticsearchnlp.lucene.similarity;
+package org.ohnlp.elasticsearchnlp.config.components;
 
-import org.apache.lucene.search.similarities.Similarity;
+public class EmbeddingsConfig {
+    private double score_weight;
+    private int dim_size;
+    private boolean ne_only;
+    private boolean remove_wordpiece;
 
-/**
- * A wrapper around a base sim weight
- */
-public class NLPTermSimWeight extends Similarity.SimWeight {
-    private final Similarity.SimWeight base;
-
-    public NLPTermSimWeight(Similarity.SimWeight base) {
-        this.base = base;
+    public double getScore_weight() {
+        return score_weight;
     }
 
-    public Similarity.SimWeight getBase() {
-        return base;
+    public void setScore_weight(double score_weight) {
+        this.score_weight = score_weight;
+    }
+
+    public int getDim_size() {
+        return dim_size;
+    }
+
+    public void setDim_size(int dim_size) {
+        this.dim_size = dim_size;
+    }
+
+    public boolean isNe_only() {
+        return ne_only;
+    }
+
+    public void setNe_only(boolean ne_only) {
+        this.ne_only = ne_only;
+    }
+
+    public boolean isRemove_wordpiece() {
+        return remove_wordpiece;
+    }
+
+    public void setRemove_wordpiece(boolean remove_wordpiece) {
+        this.remove_wordpiece = remove_wordpiece;
     }
 }

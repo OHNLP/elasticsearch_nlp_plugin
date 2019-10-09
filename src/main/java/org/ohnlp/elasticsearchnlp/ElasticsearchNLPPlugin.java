@@ -29,7 +29,6 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.apache.lucene.analysis.Analyzer;
 import org.elasticsearch.common.ParseField;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.env.Environment;
 import org.elasticsearch.index.analysis.AnalyzerProvider;
 import org.elasticsearch.index.analysis.TokenizerFactory;
 import org.elasticsearch.indices.analysis.AnalysisModule;
@@ -37,13 +36,10 @@ import org.elasticsearch.plugins.AnalysisPlugin;
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.plugins.SearchPlugin;
-import org.elasticsearch.script.ScriptContext;
-import org.elasticsearch.script.ScriptEngine;
-import org.ohnlp.elasticsearchnlp.analyzers.ConTexTAwareTokenizer;
 import org.ohnlp.elasticsearchnlp.analyzers.NLPAnalyzerProvider;
+import org.ohnlp.elasticsearchnlp.analyzers.NLPTokenizer;
 import org.ohnlp.elasticsearchnlp.config.Config;
 import org.ohnlp.elasticsearchnlp.elasticsearch.NLPNaiveBooleanESQueryBuilder;
-import org.ohnlp.elasticsearchnlp.script.NLPScriptEngine;
 
 import java.io.File;
 import java.io.IOException;
@@ -51,7 +47,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -86,17 +81,12 @@ public class ElasticsearchNLPPlugin extends Plugin implements AnalysisPlugin, Sc
 
     @Override
     public Map<String, AnalysisModule.AnalysisProvider<TokenizerFactory>> getTokenizers() {
-        return Collections.singletonMap("nlp", (indexSettings, env, name, settings) -> ConTexTAwareTokenizer::new);
+        return Collections.singletonMap("nlp", (indexSettings, env, name, settings) -> NLPTokenizer::new);
     }
 
     @Override
     public Map<String, AnalysisModule.AnalysisProvider<AnalyzerProvider<? extends Analyzer>>> getAnalyzers() {
         return Collections.singletonMap("nlp", (indexSettings, env, name, settings) -> new NLPAnalyzerProvider(indexSettings, name, settings));
-    }
-
-    @Override
-    public ScriptEngine getScriptEngine(Settings settings, Collection<ScriptContext<?>> contexts) {
-        return new NLPScriptEngine();
     }
 
     @Override

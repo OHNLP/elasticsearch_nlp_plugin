@@ -28,7 +28,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.ohnlp.elasticsearchnlp.ElasticsearchNLPPlugin;
-import org.ohnlp.elasticsearchnlp.analyzers.ConTexTAwareTokenizer;
+import org.ohnlp.elasticsearchnlp.analyzers.NLPTokenizer;
 import org.ohnlp.elasticsearchnlp.config.Config;
 import org.ohnlp.elasticsearchnlp.payloads.NLPPayload;
 
@@ -58,10 +58,10 @@ public class TokenizerTest {
 
     @Test
     public void testTokenization() throws IOException {
-        ConTexTAwareTokenizer tokenizer = new ConTexTAwareTokenizer();
+        NLPTokenizer tokenizer = new NLPTokenizer();
         tokenizer.setReader(new StringReader(TESTSTRING));
         tokenizer.reset();
-        Deque<ConTexTAwareTokenizer.TokenPayloadPair> tokenQueue = tokenizer.tokenQueue;
+        Deque<NLPTokenizer.TokenPayloadPair> tokenQueue = tokenizer.tokenQueue;
         NLPPayload gerdToken = tokenQueue.peekLast().getPayload();
         Assert.assertFalse(gerdToken.isAsserted());
         Assert.assertFalse(gerdToken.patientIsSubject());

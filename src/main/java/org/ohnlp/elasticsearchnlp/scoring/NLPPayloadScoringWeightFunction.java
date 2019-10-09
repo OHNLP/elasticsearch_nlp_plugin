@@ -30,10 +30,12 @@ import org.apache.lucene.search.Explanation;
 import org.apache.lucene.util.BytesRef;
 
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class NLPPayloadScoringWeightFunction {
 
-    private static boolean initialized = false;
+    private static final AtomicBoolean INIT_LCK = new AtomicBoolean(false);
+    private static final AtomicBoolean DOINIT_LCK = new AtomicBoolean(false);
 
     private static double mismatch_neg;
     private static double mismatch_temp_light;
@@ -55,41 +57,55 @@ public class NLPPayloadScoringWeightFunction {
      * @param idxPyldByteRef The {@link BytesRef} representing the payload of the term in the index
      * @return A float weight denoting the individual term score
      */
-    public static float getScoreMultiplier(BytesRef queryPyldByteRef, BytesRef idxPyldByteRef) {
+    public static double getScoreMultiplier(BytesRef queryPyldByteRef, BytesRef idxPyldByteRef) {
         // Ensure plugin initialized before loading config. We are guaranteed this method is not run prior to full config
         // init
-        if (!initialized) {
-            initializeWeights();
+        if (!INIT_LCK.get()) {
+            // Not initialized, try to acquire lock for initialization
+            if (!DOINIT_LCK.getAndSet(true)) {
+                initializeWeights();
+            } else {
+                synchronized (INIT_LCK) {
+                    while (!INIT_LCK.get()) {
+                        try {
+                            INIT_LCK.wait(1000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
         }
         // Load bytesref into java POJO
-        // TODO this step isn't really necessary, it is here for legibility but causes a (minor) performance hit
         NLPPayload queryPyld = new NLPPayload(queryPyldByteRef);
         NLPPayload idxPyld = new NLPPayload(idxPyldByteRef);
-        float ret = 1.00f;
-        // Check and modify scores. TODO these weights can be modified
-        // Check Negation Status - Remove from consideration if mismatch
-        if (queryPyld.isPositive() != idxPyld.isPositive()) {
-            ret *= mismatch_neg;
-        } else {
-            ret *= match_neg;
-        }
-        // Check Subject - Remove from consideration if mismatch, Heavily weight if match
-        if (queryPyld.patientIsSubject() != idxPyld.patientIsSubject()) {
-            ret *= mismatch_subj;
-        } else {
-            ret *= match_subj;
-        }
-        // Check Historical -  Penalize if Mismatch Heavily if Query Looks for Historical, Lightly Otherwise
-        if (queryPyld.isPresent() != idxPyld.isPresent()) {
-            ret *= queryPyld.isPresent() ? mismatch_temp_light : mismatch_temp_heavy;
-        } else {
-            ret *= queryPyld.isPresent() ? match_temp_light : match_temp_heavy;
-        }
-        // Check Assertion - Penalize mismatch Heavily if Query Looks for not Asserted, Lightly Otherwise
-        if (queryPyld.isAsserted() != idxPyld.isAsserted()) {
-            ret *= queryPyld.isAsserted() ? mismatch_assert_light : mismatch_assert_heavy;
-        } else {
-            ret *= queryPyld.isAsserted() ? match_assert_light : match_assert_heavy;
+        double ret = 1.00d;
+        if (ElasticsearchNLPPlugin.CONFIG.enableConTextSupport()) {
+            // Check and modify scores based on ConText
+            // Check Negation Status - Remove from consideration if mismatch
+            if (queryPyld.isPositive() != idxPyld.isPositive()) {
+                ret *= mismatch_neg;
+            } else {
+                ret *= match_neg;
+            }
+            // Check Subject - Remove from consideration if mismatch, Heavily weight if match
+            if (queryPyld.patientIsSubject() != idxPyld.patientIsSubject()) {
+                ret *= mismatch_subj;
+            } else {
+                ret *= match_subj;
+            }
+            // Check Historical -  Penalize if Mismatch Heavily if Query Looks for Historical, Lightly Otherwise
+            if (queryPyld.isPresent() != idxPyld.isPresent()) {
+                ret *= queryPyld.isPresent() ? mismatch_temp_light : mismatch_temp_heavy;
+            } else {
+                ret *= queryPyld.isPresent() ? match_temp_light : match_temp_heavy;
+            }
+            // Check Assertion - Penalize mismatch Heavily if Query Looks for not Asserted, Lightly Otherwise
+            if (queryPyld.isAsserted() != idxPyld.isAsserted()) {
+                ret *= queryPyld.isAsserted() ? mismatch_assert_light : mismatch_assert_heavy;
+            } else {
+                ret *= queryPyld.isAsserted() ? match_assert_light : match_assert_heavy;
+            }
         }
         return ret;
     }
@@ -112,6 +128,11 @@ public class NLPPayloadScoringWeightFunction {
         match_temp_light = match.getTemporal().getLight();
         match_temp_heavy = match.getTemporal().getHeavy();
         match_subj = match.getSubject();
+
+        INIT_LCK.set(true);
+        synchronized (INIT_LCK) {
+            INIT_LCK.notifyAll();
+        }
     }
 
     /**
@@ -121,7 +142,7 @@ public class NLPPayloadScoringWeightFunction {
      * @return An explanation for how the float weight is derived
      */
     public static Explanation generateExplanation(BytesRef queryPyld, BytesRef idxPyld) {
-        float weight = getScoreMultiplier(queryPyld, idxPyld);
+        double weight = getScoreMultiplier(queryPyld, idxPyld);
         // Load bytesref into java POJO
         byte[] queryPyldBytes = Arrays.copyOfRange(queryPyld.bytes, queryPyld.offset, queryPyld.offset + queryPyld.length);
         byte[] idxPyldBytes = Arrays.copyOfRange(idxPyld.bytes, idxPyld.offset, idxPyld.offset + idxPyld.length);
