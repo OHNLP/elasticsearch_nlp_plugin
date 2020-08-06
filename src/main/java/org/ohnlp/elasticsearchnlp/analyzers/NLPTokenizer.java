@@ -119,7 +119,7 @@ public final class NLPTokenizer extends Tokenizer {
         TokenPayloadPair token = tokenQueue.removeFirst();
         termAtt.setEmpty().append(token.token.getCoveredText(document));
         payloadAtt.setPayload(new BytesRef(token.payload.toBytes()));
-        this.offsetAtt.setOffset(this.correctOffset(token.token.getStart()), this.correctOffset(token.token.getEnd()));
+        this.offsetAtt.setOffset(this.correctOffset(token.token.getStart() + token.sentStartIdx), this.correctOffset(token.token.getEnd() + token.sentStartIdx));
         return true;
     }
 
@@ -191,6 +191,7 @@ public final class NLPTokenizer extends Tokenizer {
         for (Span sentence : actualSentences) {
             for (Span token : tokenizer.tokenizePos(document.substring(sentence.getStart(), sentence.getEnd()))) {
                 NLPPayload payload = new NLPPayload();
+
                 if (ElasticsearchNLPPlugin.CONFIG.enableConTextSupport()) {
                     ConTexTStatus context = documentContexts[token.getStart() + sentence.getStart()];
                     if (!context.isPositive) {
@@ -218,7 +219,7 @@ public final class NLPTokenizer extends Tokenizer {
                         payload.setExperiencerTrigger(true);
                     }
                 }
-                ret.addLast(new TokenPayloadPair(token, payload));
+                ret.addLast(new TokenPayloadPair(token, sentence.getStart(), payload));
             }
         }
         return ret;
@@ -637,10 +638,12 @@ public final class NLPTokenizer extends Tokenizer {
     public static class TokenPayloadPair {
         private final Span token;
         private final NLPPayload payload;
+        private final int sentStartIdx;
 
-        public TokenPayloadPair(Span token, NLPPayload payload) {
+        public TokenPayloadPair(Span token, int sentStartIdx, NLPPayload payload) {
             this.token = token;
             this.payload = payload;
+            this.sentStartIdx = sentStartIdx;
         }
 
         public Span getToken() {

@@ -81,8 +81,7 @@ public class NLPDocScorer extends Similarity.SimScorer {
                 weight /= weightCount;
             }
             if (!new NLPPayload(pyld).isPositive() && weightCount == 0) { // Why? Because negative mention is not found here
-                weightCount = 1;
-                weight = 1;
+                weight = 0;
             }
             float base = baseScorer.score(weightCount, norm);
             return base * weight;
@@ -119,8 +118,7 @@ public class NLPDocScorer extends Similarity.SimScorer {
             }
             Explanation correctBaseFreq;
             if (!new NLPPayload(pyld).isPositive() && weightCount == 0) { // Why? Because negative mention is not found here
-                weightCount = 1;
-                weight = 1;
+                weight = 0;
                 correctBaseFreq = Explanation.match(1, "No matches found for negated mention of " + term);
             } else {
                 correctBaseFreq = freq.isMatch() ?

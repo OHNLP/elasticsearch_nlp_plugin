@@ -37,14 +37,15 @@ public class Config {
     private Collection<NLPComponent> enabled;
     private ComponentSettings settings;
 
-    public Config() {}
+    public Config() {
+    }
 
     public Collection<NLPComponent> getEnabled() {
         return enabled;
     }
 
     public void setEnabled(Collection<NLPComponent> enabled) {
-        this.enabled = new HashSet<>(enabled);
+        this.enabled = enabled;
     }
 
     public ComponentSettings getSettings() {
@@ -80,7 +81,8 @@ public class Config {
         private ConTextConfig context;
 //        private EmbeddingsConfig embeddings;
 
-        public ComponentSettings() {}
+        public ComponentSettings() {
+        }
 
         public ConTextConfig getContext() {
             return context;

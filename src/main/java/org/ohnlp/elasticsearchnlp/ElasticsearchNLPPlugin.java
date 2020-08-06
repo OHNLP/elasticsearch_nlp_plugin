@@ -50,6 +50,7 @@ import java.security.PrivilegedAction;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 public class ElasticsearchNLPPlugin extends Plugin implements AnalysisPlugin, ScriptPlugin, SearchPlugin {
 
@@ -76,7 +77,6 @@ public class ElasticsearchNLPPlugin extends Plugin implements AnalysisPlugin, Sc
                 return null;
             }
         });
-
     }
 
     @Override

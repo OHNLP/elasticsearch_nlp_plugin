@@ -36,6 +36,7 @@
     <target name="dist"
             description="generate the distribution" depends="init">
         <copy file="src/main/resources/plugin-descriptor.properties" tofile="${dist}/plugin-descriptor.properties"/>
+        <copy file="src/main/resources/plugin-security.policy" tofile="${dist}/plugin-security.policy"/>
         <copy file="src/main/resources/elasticsearch-nlp-plugin.yml" tofile="${dist}/config.yml"/>
         <copy file="target/ES-NLP-Plugin.jar" tofile="${dist}/ES-NLP-Plugin.jar"/>
         <zip basedir="${dist}" destfile="ES-NLP-Plugin.zip"/>
