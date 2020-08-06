@@ -29,5 +29,5 @@ Making customizations to this codebase is fairly straightforward - you will need
 4. Follow the installation steps for installing elasticsearch plugins from filesystem [here](https://www.elastic.co/guide/en/elasticsearch/plugins/current/plugin-management-custom-url.html), directing it at the downloaded zip file
 
 ## Reference
->A. Wen, Y. Wang, V. C. Kaggal, S. Liu, H. Liu and J. Fan, "Enhancing Clinical Information Retrieval through Context-Aware Queries and Indices," 2019 IEEE International Conference on Big Data (Big Data), Los Angeles, CA, USA, 2019, pp. 2800-2807, doi: 10.1109/BigData47090.2019.9006241.`
+>A. Wen, Y. Wang, V. C. Kaggal, S. Liu, H. Liu and J. Fan, "Enhancing Clinical Information Retrieval through Context-Aware Queries and Indices," 2019 IEEE International Conference on Big Data (Big Data), Los Angeles, CA, USA, 2019, pp. 2800-2807, doi: 10.1109/BigData47090.2019.9006241.
 
