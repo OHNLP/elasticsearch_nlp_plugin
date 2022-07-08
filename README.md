@@ -20,6 +20,7 @@ in reverse chronological order, although features are not backported between ver
 for your desired release.
 2. Follow the installation steps for installing elasticsearch plugins from filesystem [here](https://www.elastic.co/guide/en/elasticsearch/plugins/current/plugin-management-custom-url.html), directing it at the downloaded zip file
 3. Copy `config.yml` in the zip to `<your_es_directory>/config/elasticsearch-nlp-plugin.yml` and edit appropriately
+4. Documents need to be indexed using the `nlp` tokenizer
 
 ## For developers
 Making customizations to this codebase is fairly straightforward - you will need JDK 8+, Apache Maven, and Apache Ant
